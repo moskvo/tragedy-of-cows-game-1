@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <title>Memory Game</title>
+
+  <link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+
+  <section class="memory-game">
+
+    <div class="cows-choice droppable">
+        <img id="img1" class="cow" src="../img/js-badge.svg" alt="JS Badge" draggable="true" ondragstart="drag(event)" />
+        <img id="img2" class="cow" src="../img/js-badge.svg" alt="JS Badge" draggable="true" ondragstart="drag(event)" />
+    </div>
+  
+
+    <div class="game-field ground-field" ></div>
+    <div class="game-field grass-field droppable" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="vue"></div>
+    <div class="game-field ground-field" data-framework="vue"></div>
+
+    <div class="game-field grass-field droppable" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="vue"></div>
+    <div class="game-field grass-field droppable" data-framework="vue"></div>
+
+    <div class="game-field grass-field droppable" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="vue"></div>
+    <div class="game-field grass-field droppable" data-framework="vue"></div>
+
+    <div class="game-field ground-field" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="aurelia"></div>
+    <div class="game-field grass-field droppable" data-framework="vue"></div>
+    <div class="game-field ground-field" data-framework="vue"></div>
+
+  </section>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
