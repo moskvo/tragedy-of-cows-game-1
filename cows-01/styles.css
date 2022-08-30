@@ -19,7 +19,7 @@ body {
   perspective: 1000px;
 }
 
-.cows-choice {
+.choice-set {
   width: 100%;
   height: calc(20% - 4px);
   position: relative;
