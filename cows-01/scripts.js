@@ -2,12 +2,41 @@ const fields = document.querySelectorAll('.game-field');
 
 const player_state = {
     player: 1,
-    color: 'orange'
+    color: 'orange',
+    choice: [],
+    game_calculator: {}
     }
 
 const interface_state = {
     draggable: null
     };
+
+class GameCalculator {
+    constructor(){
+        this.situation = new Map( [[1,new Set()],[2,new Set()],[3,new Set()]] );
+        this.field = 12;
+        }
+    addChoice(player,choice){
+        return this.situation[player].add(choice);
+        }
+    removeChoice(player,choice){
+        return this.situation[player].delete(choice);
+        }
+    
+    getPayoff(player){
+        let p = this.situation[player].size,
+            A = 0;
+        for( const [key, el] of this.situation ){
+            A += el.size;
+            }
+        return A;
+        }
+    
+    sendChoice(){
+
+    }
+
+}
 
 document.querySelectorAll('.droppable').forEach((v)=>{
     v.addEventListener('drop',drop);
@@ -26,22 +55,6 @@ cows.forEach( (v,i) => {
 
 const choice_set = document.querySelector('.choice-set');
 
-function unflipCards() {
-  lockBoard = true;
-
-  setTimeout(() => {
-    firstCard.classList.remove('flip');
-    secondCard.classList.remove('flip');
-
-    resetBoard();
-  }, 1500);
-}
-
-function resetBoard() {
-    hasFlippedCard = lockBoard = false;
-    firstCard = secondCard = null;
-    }
-
 function drop(event) {
     event.preventDefault();
     //let card_id = ev.dataTransfer.getData("text");
@@ -57,6 +70,7 @@ function drop(event) {
     if ( oldplace.classList.contains('game-field') ) {
         oldplace.addEventListener('drop',drop);
         oldplace.addEventListener('dragover',allowDrop); 
+        player_state.game_calculator.removeChoice( player_state.player, oldplace.id );
         }
     if( newplace.classList.contains('choice-set') ){
         card.style.left = cows_conf.get(card.id).left;
@@ -66,7 +80,8 @@ function drop(event) {
         card.style.left = 0 + 'px';
         card.setAttribute('graze',true);
         newplace.removeEventListener('drop',drop);
-        newplace.removeEventListener('dragover',allowDrop); 
+        newplace.removeEventListener('dragover',allowDrop);
+        player_state.game_calculator.addChoice( player_state.player, newplace.id );
         }
 
     //ev.target.appendChild(document.getElementById(data));
