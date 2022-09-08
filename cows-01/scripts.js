@@ -1,3 +1,15 @@
+document.addEventListener("DOMContentLoaded", function(event) {
+    let tgame = new TragedyOfCommons(3,12);
+    let opts = {
+        game:tgame,
+        player:1,
+        gamescreen_element:document.querySelector('section.cows-game'),
+        situation: new Map([ [1,new Set()], [2,new Set(['f2','f3'])], [3,new Set(['f4','f5','f6'])] ])
+    }
+    let videogame = new VideoGame(opts);
+    videogame.drawChoices();
+  });
+
 const fields = document.querySelectorAll('.game-field');
 
 const player_state = {
@@ -11,10 +23,36 @@ const interface_state = {
     draggable: null
     };
 
-class GameCalculator {
-    constructor(){
-        this.situation = new Map( [[1,new Set()],[2,new Set()],[3,new Set()]] );
-        this.field = 12;
+class TragedyOfCommons{
+    constructor(n,A){
+        this.players = Array.from({length: n}, (_, i) => i + 1);
+        this.A = A;
+        this.actions = new Map( this.players.map( p => [p, 0] ) );
+        }
+
+    setAction(player, a){
+        this.actions.set(player,a);
+        }
+
+    getPayoff(player){
+        let sum = 0;
+        this.actions.forEach( (v,k) => sum += v );
+        return this.actions.get(player) * (this.A - sum);
+    }
+}
+
+class VideoGame {
+    constructor({game, player, gamescreen_element, situation}){
+        this.game = game;
+        this.player = player;
+        if( typeof situation === "undefined" ){
+            this.situation = new Map();
+            for( const p of game.players ){
+                this.situation.add(p,new Set());
+                };
+            }
+        else{ this.situation = situation; }
+        this.screen = gamescreen_element;
         }
     addChoice(player,choice){
         return this.situation[player].add(choice);
@@ -23,18 +61,31 @@ class GameCalculator {
         return this.situation[player].delete(choice);
         }
     
-    getPayoff(player){
-        let p = this.situation[player].size,
-            A = 0;
-        for( const [key, el] of this.situation ){
-            A += el.size;
+    drawChoices(){
+        for( const [player,strategy] of this.situation ){
+            for( const id of strategy ){
+                let field = this.screen.querySelector('#'+id);
+                field.appendChild( this.createCard(player) );
+                }
             }
-        return A;
+        }
+
+    getPayoff(){
+        let p = this.situation[this.player].size;
+        this.game.setAction(this.player);
+        return this.game.getPayoff(this.player);
         }
     
     sendChoice(){
 
     }
+
+    createCard(player){
+        var card = document.createElement("img");
+        card.classList.add('cow', 'player-'+player);
+        card.setAttribute('src',"../img/cow.png");
+        return card;
+        }
 
 }
 
@@ -114,4 +165,13 @@ function cards_on_field() {
         if( v.hasAttribute('graze') && v.classList.contains('player-'+player_state.player) ) { cards.push(v); }
         });
     return cards;
+    }
+
+function place_a_cow (cow_action,field_element) {
+    
+    cow_action.card.style.left = 0 + 'px';
+    cow_action.card.setAttribute('graze',true);
+    field_element.removeEventListener('drop',drop);
+    field_element.removeEventListener('dragover',allowDrop);
+    player_state.game_calculator.addChoice( cow_action.player, field_element.id );
     }

@@ -10,7 +10,7 @@ body {
   background: #060AB2;
 }
 
-.memory-game {
+.cows-game {
   width: 640px;
   height: 800px;
   margin: auto;
@@ -70,4 +70,12 @@ body {
 
 .player-1 {
   background: orange;
+}
+
+.player-2 {
+  background: rgb(0, 192, 0);
+}
+
+.player-3 {
+  background: rgb(31, 64, 253);
 }
