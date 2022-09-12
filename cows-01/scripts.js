@@ -13,8 +13,11 @@ class TragedyOfCommons{
         let sum = 0;
         this.actions.forEach( (v,k) => sum += v );
         return this.actions.get(player) * (this.A - sum);
+        }
+    to_string(){
+        return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions.entries()]}`;
+        }
     }
-}
 
 class VideoGame {
     constructor({game, player, gamescreen_element, situation}){
@@ -48,27 +51,34 @@ class VideoGame {
         
         self.fields = document.querySelectorAll('.game-field');
         self.choice_set = document.querySelector('.choice-set');
+        self.payoff_element = document.getElementById('payoff');
         }
-    addChoice(choice){
-        return this.situation.get(this.player).add(choice);
+    addChoice(choice,player=this.player){
+        let c = this.situation.get(player);
+        c.add(choice);
+        this.game.setAction(player,c.size);
+        this.payoff_element.textContent = this.getPayoff();
         }
-    removeChoice(choice){
-        return this.situation.get(this.player).delete(choice);
+    removeChoice(choice,player=this.player){
+        let c = this.situation.get(player);
+        c.delete(choice);
+        this.game.setAction(player,c.size);
+        this.payoff_element.textContent = this.getPayoff();
         }
     
     async drawChoices(){
         for( const [player,strategy] of this.situation ){
-            let draggable = player == this.player;
+            let draggable = (player == this.player);
             for( const id of strategy ){
                 let field = this.screen.querySelector('#'+id);
-                this.placeCard( this.createCard(player,draggable), field); //field.appendChild( this.createCard(player,draggable) );
+                this.placeCard( this.createCard(player,draggable), field, player); //field.appendChild( this.createCard(player,draggable) );
                 }
             }
         }
 
     getPayoff(){
-        let p = this.situation.get(this.player).size;
-        this.game.setAction(this.player,p);
+        console.log( this.game.to_string() );
+        console.log( [...this.situation]);
         return this.game.getPayoff(this.player);
         }
     
@@ -84,7 +94,7 @@ class VideoGame {
         return card;
         }
     
-    placeCard(card,newplace) {
+    placeCard(card,newplace,player=this.player) {
         if( newplace.classList.contains('choice-set') ){
             card.style.left = this.cows_conf.get(card.id).left;
             card.removeAttribute('graze');
@@ -94,17 +104,17 @@ class VideoGame {
             card.setAttribute('graze',true);
             newplace.removeEventListener('drop',drop);
             newplace.removeEventListener('dragover',allowDrop);
-            this.addChoice(newplace.id);
+            this.addChoice(newplace.id,player);
             }
         newplace.appendChild(card);
         }
     
-    upCard(card,oldplace) {
+    upCard(card,oldplace,player=this.player) {
         //card.parentNode.removeChild(card);
         if ( oldplace.classList.contains('game-field') ) {
             oldplace.addEventListener('drop',drop);
             oldplace.addEventListener('dragover',allowDrop);
-            this.removeChoice(oldplace.id);
+            this.removeChoice(oldplace.id,player);
             }  
         }
     
