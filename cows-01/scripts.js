@@ -135,6 +135,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
     videogame = new VideoGame(opts);
     videogame.drawChoices();
 
+    let blind = document.getElementById("blind");
+
+    let btn = document.getElementById("send");
+    btn.onclick = function() { blind.style.visibility = 'visible'; };
+
     });
 
 const interface_state = {
