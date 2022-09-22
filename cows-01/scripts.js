@@ -14,6 +14,10 @@ class TragedyOfCommons {
         this.A = A;
         this.actions = new Map( this.players.map( p => [p, 0] ) );
         }
+    
+    get n(){
+        return this.players.length;
+        }
 
     setAction(player, a) {
         this.actions.set(player,a);
@@ -34,13 +38,12 @@ class Group {
         this.choices_done = false;
         this.players_with_choices = [];
         this.game = game;
-        
-    }
+        }
 
     fixChoice(player, a) {
-        this.actions.set(player,a);
+        this.game.setActions(player,a);
         this.players_with_choices.push(player);
-        if( this.players_with_choices.length == this.players.length ) { this.choices_done = true; }
+        if( this.players_with_choices.length == this.game.n ) { this.choices_done = true; }
         }
 }
 
