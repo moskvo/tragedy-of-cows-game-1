@@ -1,11 +1,21 @@
-class TragedyOfCommons{
-    constructor(n,A){
+'use strict';
+
+if (!window.WebSocket) {
+	document.body.innerHTML = 'WebSocket в этом браузере не поддерживается.';
+}
+
+// создать подключение
+var socket = new WebSocket('ws://'+IP+':'+port);
+
+
+class TragedyOfCommons {
+    constructor(n,A) {
         this.players = Array.from({length: n}, (_, i) => i + 1);
         this.A = A;
         this.actions = new Map( this.players.map( p => [p, 0] ) );
         }
 
-    setAction(player, a){
+    setAction(player, a) {
         this.actions.set(player,a);
         }
 
@@ -18,6 +28,21 @@ class TragedyOfCommons{
         return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions.entries()]}`;
         }
     }
+
+class Group {
+    constructor(game,players,players_ids){
+        this.choices_done = false;
+        this.players_with_choices = [];
+        this.game = game;
+        
+    }
+
+    fixChoice(player, a) {
+        this.actions.set(player,a);
+        this.players_with_choices.push(player);
+        if( this.players_with_choices.length == this.players.length ) { this.choices_done = true; }
+        }
+}
 
 class VideoGame {
     constructor({game, player, gamescreen_element, situation}){
@@ -53,7 +78,7 @@ class VideoGame {
         self.choice_set = document.querySelector('.choice-set');
         self.payoff_element = document.getElementById('payoff');
         }
-    addChoice(choice,player=this.player){
+    addChoice(player,choice){
         let c = this.situation.get(player);
         c.add(choice);
         this.game.setAction(player,c.size);
@@ -83,7 +108,8 @@ class VideoGame {
         }
     
     sendChoice() {
-
+        var outgoingMessage = JSON.stringify([...this.situation.get(this.player)]);
+        socket.send(outgoingMessage);   
         }
 
     createCard(player, draggable=true) {
@@ -104,7 +130,7 @@ class VideoGame {
             card.setAttribute('graze',true);
             newplace.removeEventListener('drop',drop);
             newplace.removeEventListener('dragover',allowDrop);
-            this.addChoice(newplace.id,player);
+            this.addChoice(player, newplace.id);
             }
         newplace.appendChild(card);
         }

@@ -1,0 +1,22 @@
+﻿<!DOCTYPE html>
+<html>
+</title>
+<head>
+<title>Коровы на поле: интерактивная экономическая игра</title>
+</head>
+<body>
+<table width=600><tr><td>
+<b>Игроки-фермеры стараются получить максимальные надои со своих коров. Надои равны произведению числа выпущенных фермером коров на количество травы (свободных клеток поля). 
+</b></td></tr></table>
+    
+<div style="display: none;" width=600px minwidth=600px id=controls>
+<div width=30% style="float: left;"><input type="button" style="height:100px; width:100px; white-space: normal;" id="decrease" onclick="decrease()" value="Убрать корову (-1)"></div><div style="float: left;vertical-align: bottom;min-width:100px;" width=30% align="center">&nbsp;<h1><div id="cows">0</div></h1>&nbsp;</div><div style="float: left;" width=30%><input style="height:100px; width:100px; white-space: normal;" type="button" height=100 id="increase" onclick="increase()" value="Выпустить еще корову (+1)"></div>
+</div>
+
+<div id="field"></div>
+
+<script src="cowslocalparameters.js"></script>
+<script src="cows.js"></script>
+
+</body>
+</html>

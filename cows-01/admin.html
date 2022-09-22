@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Администратор игры "Коровы на поле"</title>
+</head>
+<body>
+<style>
+    .small_wrap {display: inline-block; width: 31%; margin: 1%;}
+    #controls {width: 800px;}
+    #pass {display: inline-block;}
+    #actions {display: inline-block;}
+    #fields {width:800px; display:block;}
+    #hist {display: block;}
+</style>
+<div id=controls>
+    <div id=pass>
+        Пароль: <input id="adminPassword" type="password" onkeydown="if (event.keyCode == 13) connect()">&nbsp
+        <input type="button" id="connect" onclick="connect()" value="Отправить">&nbsp
+    </div>
+    <div id=actions>
+        <input type="checkbox" id="shuffle" onchange="shuffle()"><label for="shuffle">Перемешать игроков</label>&nbsp
+        <input type="button" id="restart" onclick="restart()" value="Начать заново">
+    </div>   
+</div>
+<p><div id="fields"></div></p>
+ 
+<script src="cowslocalparameters.js"></script>
+<script src="cowsadmin.js"></script>
+</body>
+</html>
