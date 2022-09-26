@@ -31,37 +31,7 @@ var shuffleflag = false;
 
 var groups = [];
 var player_in_group = {};
-
-class Group {
-    constructor(gameapi,players_ids) {
-        this.game = gameapi.new_game(players_ids.length);
-        this.players_ids = players_ids;
-        this.players_map = this.game.players.map( (e,i)=> [players_ids[i], e] );
-
-        this.choices_done = false;
-        this.players_with_choices = [];        
-        }
-
-    fixChoice(player, a) {
-        this.game.setAction(player,a);
-        this.players_with_choices.push(player);
-        if( this.players_with_choices.length == this.players.length ) { this.choices_done = true; }
-        }
-    
-    get payoffs(){
-        let m = new Map();
-        for( let [k,v] of this.players_map.entries() ){
-            m.set( k, this.game.getPayoff(v) );
-            }
-        return m;
-        }
-
-    next_round(){
-        this.choices_done = false;
-        this.players_with_choices = [];
-        }
-    }
-
+const Group = parameters.Group;
 
 
 var clients = []; // переменная, которая хранит ID сессий при комплектовании игроками игры 
@@ -96,6 +66,11 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         var x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
         if( x.action ){
             strategies[id] = x;
+            }
+        if( x.choice ){
+            strategies[id] = x.choice;
+            player_in_group[id].fixChoice(id,x.choice);
+            sendFields(player_in_group[id]);
             }
         });
     
@@ -172,6 +147,13 @@ function connectInfo()
         // она вычисляет выигрыши всех игроков, рисует поле в html и отправляет его для отображения клиенту
         
 function sendFields() {        
+
+    for( let g of groups ){
+        if( g.choices_done ){
+
+        }
+    }
+
     var fieldHTML; //  поле для текущего игрока
     var historyHTML; //  график истории выигрыша для сессии key
     var statsHTML; //  таблица со статистикой для сессии key

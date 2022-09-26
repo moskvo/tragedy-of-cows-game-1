@@ -38,3 +38,39 @@ class TragedyOfCommons {
     }
 
 module.exports.TheGame = TragedyOfCommons;
+
+class Group {
+    constructor(gameapi,players_ids) {
+        this.game = gameapi.new_game(players_ids.length);
+        this.players_ids = players_ids;
+        this.players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
+
+        this.choices_done = false;
+        this.players_with_choices = [];        
+        }
+
+    fixChoice(player_id, a) {
+        if( ! this.players_map.has(player_id))
+            return false;
+        let current_player = this.players_map.get(player_id);
+        this.game.setAction(current_player,a);
+        this.players_with_choices.push(player_id);
+        if( this.players_with_choices.length == this.players.length ) 
+            { this.choices_done = true; }
+        }
+    
+    async get_payoffs(){
+        let m = new Map();
+        for( let [k,v] of this.players_map.entries() ){
+            m.set( k, this.game.getPayoff(v) );
+            }
+        return m;
+        }
+
+    next_round(){
+        this.choices_done = false;
+        this.players_with_choices = [];
+        }
+    }
+
+module.exports.Group = Group;
