@@ -111,7 +111,7 @@ class VideoGame {
         }
     
     sendChoice() {
-        var outgoingMessage = JSON.stringify([...this.situation.get(this.player)]);
+        var outgoingMessage = JSON.stringify({choices:[...this.situation.get(this.player)]});
         socket.send(outgoingMessage);   
         }
 
