@@ -65,7 +65,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         console.log('получено сообщение ' + message);
         var x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
         if( x.action ){
-            strategies[id] = x;
+            strategies[id] = x.action;
             }
         if( x.choice ){
             strategies[id] = x.choice;
@@ -148,11 +148,18 @@ function connectInfo()
         
 function sendFields() {        
 
-    for( let g of groups ){
-        if( g.choices_done ){
+    groups.filter(g=>g.choices_done).forEach( g=>{
+        let ids = g.player_ids;
+        g.get_payoffs()
+        .then(ar_payoffs => {
+            for( let i in ids ) {
+                clients_sockets[ids[i]].send(
+                    JSON.stringify({payoff:ar_payoffs[i]})
+                    );
+                }
 
-        }
-    }
+            })
+        });
 
     var fieldHTML; //  поле для текущего игрока
     var historyHTML; //  график истории выигрыша для сессии key
