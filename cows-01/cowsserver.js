@@ -1,7 +1,7 @@
 ﻿'use strict';
 
-var http = require('http'); 
-var Static = require('node-static');
+//var http = require('http'); 
+//var Static = require('node-static');
 
 var parameters = require("./cowsparameters");
 var size = parameters.fieldsize;
@@ -70,7 +70,6 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         if( x.choice ){
             strategies[id] = x.choice;
             player_in_group[id].fixChoice(id,x.choice);
-            sendFields(player_in_group[id]);
             }
         });
     
@@ -150,73 +149,22 @@ function sendFields() {
 
     groups.filter(g=>g.choices_done).forEach( g=>{
         let ids = g.player_ids;
+        let situation = g.situation;
         g.get_payoffs()
-        .then(ar_payoffs => {
-            for( let i in ids ) {
-                clients_sockets[ids[i]].send(
-                    JSON.stringify({payoff:ar_payoffs[i]})
+        .then(map_payoffs => {
+            for( let id of ids ) {
+                clients_sockets[id].send(
+                    JSON.stringify({situation:situation, payoff:map_payoffs[id]})
                     );
                 }
 
             })
         });
 
-    var fieldHTML; //  поле для текущего игрока
-    var historyHTML; //  график истории выигрыша для сессии key
-    var statsHTML; //  таблица со статистикой для сессии key
-    var message={};
-
-    var message={};
-    for(var key in players) {
-        if (players[key]!=undefined) {
-            if(gamepause) {
-                fieldHTML = '<p style="color:red; font-size:xx-large">ИГРА ПРИОСТАНОВЛЕНА! ВНИМАНИЕ НА ЛЕКТОРА!</p>'; //  поле для текущего игрока
-                message.showcontrols=false; // заблокировать ввод стратегий в режиме паузы
-                } 
-            else {
-                var s = getStrategies(key); // вычислить профиль стратегий
-
-                // вычислить выигрыш, текущий игрок всегда считается первым
-                var f = getPayoff(1, s);
-
-                // заполнить историю выигрышей
-                history[key].shift();
-                history[key].push(f);            
-
-                fieldHTML = drawField(1, s); // нарисовать поле для текущего игрока
-                message.showcontrols=true;
-                }
-            historyHTML = drawHistory(key); // нарисовать график истории выигрыша для сессии key
-            statsHTML = drawStats(key); // вывести таблицу со статистикой для сессии key
-            message.HTML = '<p>'+fieldHTML+historyHTML+statsHTML+'</p>';
-            players[key].send(JSON.stringify(message)); // отправить сформированный HTML клиенту
+    if(shuffleflag) { // если режим перемешивания, то для следующего периода перемешать игроков
+        shufflePlayers();
         }
     }
-    if(!gamepause) { // выигрыши обновляются только если не в режиме паузы
-        record = 0; // мы смотрим только рекорды живых сессий
-        for(var key in players) { // обновить накопленные выигрыши
-            if (players[key]!=undefined) {
-                if (history[key].slice(-1)[0] != null) {
-                    if (payoffs[key]!=undefined) {
-                        payoffs[key]=lambda*payoffs[key]+(1-lambda)*history[key].slice(-1)[0];
-                    } else {
-                        payoffs[key]=history[key].slice(-1)[0];
-                    }
-                            
-                } else {
-                    payoffs[key]=0;
-                }
-                if (payoffs[key]>record) {
-                    record = payoffs[key];
-                }
-            }
-        }
-
-        if(shuffleflag) { // если режим перемешивания, то для следующего периода перемешать игроков
-            shufflePlayers();
-        }
-    }
-}
 
 function getStrategies(key) {
     var ops=opponents[key].players; // для Коров на поле, игроков двое 
@@ -230,11 +178,6 @@ function getStrategies(key) {
         }
     }
     return s;
-}
-
-// вычислить выигрыш игрока player при профиле стратегий s
-function getPayoff(player, s) {
-    return Math.max(0,(size*size-s.x-s.y)*s.x);        
 }
 
 // нарисовать поле для игрока player при стратегиях s
@@ -279,13 +222,13 @@ adminServer.on('connection', function(ws) { // запускается, когд�
     ws.on('message', function(message) { // админ присылает на сервер пароль и команды обнуления статистики
         console.log('получено админское сообщение');
         var command = JSON.parse(message); // предполагается, что команда передается в JSON 
-        if(command.hasOwnProperty('password') && command.password==='trapeznikov') { // если передан пароль, причем правильный
+        if( command.password =='trapeznikov') { // если передан пароль, причем правильный
             verified = true;
-            if(command.hasOwnProperty('restart')) { // если запрошен рестарт статистики
+            if(command.restart) { // если запрошен рестарт статистики
                 console.log('запрошен рестарт');
                 restartStats();
             }
-            if(command.hasOwnProperty('shuffle')) { // если запрошено перемешать игроков
+            if(command.shuffle) { // если запрошено перемешать игроков
                 shuffleflag = command.shuffle;
                 console.log('перемешивать игроков = ' + shuffleflag.toString());
             }
@@ -303,32 +246,18 @@ adminServer.on('connection', function(ws) { // запускается, когд�
     // Посылать информацию об игре админу каждые updateinterval милисекунд
     setInterval(sendAdmin, parameters.updateinterval);
     
-    let rho = Array(size*size+1).fill().map(() => Array(size*size+1).fill(0)); // плотность распределения стратегий
-
     function sendAdmin() {
         if(verified === false) { // отображать только авторизованным админам
             return;
-        }
-        var maxrho = 0; // maximum density value for color normalization 
+            }
         var f;
         var bordercolor="";
         var message = "";
         var s;
 
-        for(var i = 0; i < rho.length; i++) { // устаревание статистики
-          for(var j = 0; j < rho.length; j++) {
-                rho[i][j]*=parameters.trace;
-            }
-        }
-
         for(var key in players) { // по всем играющим клиентам
-            if (players[key]!=undefined && opponents[key].players[0] == key) { // выводим только для первого игрока в паре
+            if (players[key] && opponents[key].players[0] == key) { // выводим только для первого игрока в паре
                 s = getStrategies(key); // вычислить профиль стратегий
-                rho[Math.max(s.x,s.y)][Math.min(s.x,s.y)]+=(1-parameters.trace)/2; // обновить плотность профилей стратегий
-                //console.log(rho[Math.max(s.x,s.y)][Math.min(s.x,s.y)]);
-                if(maxrho<rho[Math.max(s.x,s.y)][Math.min(s.x,s.y)]) {
-                    maxrho=rho[Math.max(s.x,s.y)][Math.min(s.x,s.y)];
-                }
                     
                 // вычислить выигрыш, текущий игрок всегда считается первым
                 f = getPayoff(1, s);

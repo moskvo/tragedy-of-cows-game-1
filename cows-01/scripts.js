@@ -111,7 +111,7 @@ class VideoGame {
         }
     
     sendChoice() {
-        var outgoingMessage = JSON.stringify({choices:[...this.situation.get(this.player)]});
+        var outgoingMessage = JSON.stringify({choice:[...this.situation.get(this.player)]});
         socket.send(outgoingMessage);   
         }
 
@@ -196,4 +196,34 @@ function allowDrop(ev) { ev.preventDefault(); }
 function dragstart(ev) {
     ev.dataTransfer.setData("text", ev.target.id);
     interface_state.draggable = ev.target;
+    }
+
+
+// обработчик входящих сообщений
+socket.onmessage = function(event) {
+    var incomingMessage = JSON.parse(event.data);
+    if(incomingMessage.HTML!=undefined) {
+        showMessage(incomingMessage.HTML);
+        }    
+    if(incomingMessage.showcontrols) {
+        document.getElementById("controls").style.display = 'inline-block';
+        }
+    else {
+        document.getElementById("controls").style.display = 'none';
+        }
+    if(incomingMessage.x != undefined) {
+        document.getElementById('cows').innerHTML = incomingMessage.x.toString();
+        x=incomingMessage.x;
+        }
+  };
+  
+  // обработчик обрыва сокета - реконнект
+  socket.onclose = function(event) {
+      // перезагрузить страницу при обрыве связи
+      location.reload(true);
+  };
+  
+// показать текущее состояние поля в div#field
+function showMessage(message) {
+    document.getElementById('field').innerHTML = message;
     }

@@ -32,6 +32,14 @@ class TragedyOfCommons {
         this.actions.forEach( (v,k) => sum += v );
         return this.actions.get(player) * (this.A - sum);
         }
+    
+    getPayoffs(){
+        let sum = 0;
+        this.actions.forEach( (v,k) => sum += v );
+        return this.actions.get(player) * (this.A - sum);
+
+        }
+
     to_string(){
         return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions.entries()]}`;
         }
@@ -44,21 +52,26 @@ class Group {
         this.game = gameapi.new_game(players_ids.length);
         this.players_ids = players_ids;
         this.players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
+        this.situation = new Map();
 
         this.choices_done = false;
         this.players_with_choices = [];        
         }
 
     fixChoice(player_id, a) {
-        if( ! this.players_map.has(player_id))
-            return false;
+        if( ! this.players_map.has(player_id) )
+            { return false; }
+        this.situation.set(player_id,a);
+
         let current_player = this.players_map.get(player_id);
-        this.game.setAction(current_player,a);
+        this.game.setAction(current_player,a.length);
+        
         this.players_with_choices.push(player_id);
         if( this.players_with_choices.length == this.players.length ) 
             { this.choices_done = true; }
         }
     
+    // return map id=>payoff
     async get_payoffs(){
         let m = new Map();
         for( let [k,v] of this.players_map.entries() ){
