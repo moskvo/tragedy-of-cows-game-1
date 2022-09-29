@@ -118,7 +118,7 @@ class VideoGame {
     createCard(player, draggable=true) {
         var card = document.createElement("img");
         card.classList.add('cow', 'player-'+player);
-        card.setAttribute('src',"../img/cow.png");
+        card.setAttribute('src',"img/cow.png");
         card.setAttribute('draggable',draggable);
         return card;
         }
