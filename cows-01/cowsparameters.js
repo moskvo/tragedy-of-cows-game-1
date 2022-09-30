@@ -1,4 +1,4 @@
-module.exports.n = 2; // число игроков
+module.exports.n = 3; // число игроков
 module.exports.fieldsize = 12; // размер поля
 
 module.exports.statsport = '8080'; // порт, на котором открывается WebSocket
@@ -10,7 +10,7 @@ module.exports.sleeptime = 5000; // частота смены стратегии
 module.exports.expdecay = 0.9; // вес истории при экспоненциальном сглаживаниии выигрышей
 module.exports.trace = 0.5; // вес истории при экспоненциальном сглаживаниии траекторий
 
-module.exports.singleuser = true; // разрешать только одну сессию с одного IP  
+module.exports.singleuser = false; // разрешать только одну сессию с одного IP  
 
 class TragedyOfCommons {
     constructor(n,A) {
@@ -52,10 +52,15 @@ class Group {
         this.game = gameapi.new_game(players_ids.length);
         this.players_ids = players_ids;
         this.players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
-        this.situation = new Map();
+        this.situation = this.empty_situation();
+        this.round = 0;
 
         this.choices_done = false;
         this.players_with_choices = [];        
+        }
+    
+    empty_situation() {
+        return new Map(this.players_ids.map( el => [el,[]]) );
         }
 
     fixChoice(player_id, a) {

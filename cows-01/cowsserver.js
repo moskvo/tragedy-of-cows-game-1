@@ -4,9 +4,9 @@
 //var Static = require('node-static');
 
 var parameters = require("./cowsparameters");
-var size = parameters.fieldsize;
-let gameapi = {
-    new_game: () => new parameters.TheGame(n,size)
+const gameapi = {
+    new_game: () => new parameters.TheGame(parameters.n,parameters.fieldsize),
+    fields_ids: Array.from({length: parameters.n}, (_, i) => 'f'+(i+1)),
 };
 
 console.log('FIELD SIZE = '+String(size));
@@ -109,6 +109,7 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
     
     if(clients.length == parameters.n) { // если набрался полный комплект участников 
         let g = new Group(gameapi,clients);
+        g.choices_done = true; // для отправки начальной ситуации (0,0,0)
         groups.push(g);
         for (let i of clients) {
             players[i] = clients_sockets[i]; // поместить игрока в таблицу 
@@ -129,15 +130,14 @@ setInterval(connectInfo, parameters.updateinterval);
 // Обновлять игровые поля каждые updateinterval милисекунд
 setInterval(sendFields, parameters.updateinterval);
 
-function connectInfo()
-    {
-        for(var soc in clients_sockets) { // по всем клиентам, ожидающим подключения
-            if (clients_sockets[soc]!=undefined) {
-                var message={};
-                message.HTML ='<p><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></p>';
-                message.HTML += drawStats(soc);
-                message.showcontrols=false;
-                clients_sockets[soc].send(JSON.stringify(message));
+function connectInfo() {
+    for(var soc in clients_sockets) { // по всем клиентам, ожидающим подключения
+        if (clients_sockets[soc]!=undefined) {
+            var message={};
+            message.HTML ='<p><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></p>';
+            message.HTML += drawStats(soc);
+            message.showcontrols=false;
+            clients_sockets[soc].send(JSON.stringify(message));
             }
         }
     }
@@ -148,13 +148,31 @@ function connectInfo()
 function sendFields() {        
 
     groups.filter(g=>g.choices_done).forEach( g=>{
+        // solve game
         let ids = g.player_ids;
         let situation = g.situation;
+        let round = g.round;
+
+        // solve possible collisions
+        const [allocation_fields,offside] = solveCollisionsOnFields(gamepi.fields_ids,situation);
+        let newsituation = g.empty_situation();
+        for( [f,ps] of allocation_fields.entries() ){
+            newsituation.get(ps).push(f);
+            }
+    
+
+        // send next round payoffs and situation
         g.get_payoffs()
         .then(map_payoffs => {
             for( let id of ids ) {
                 clients_sockets[id].send(
-                    JSON.stringify({situation:situation, payoff:map_payoffs[id]})
+                    JSON.stringify({
+                        newround: true,
+                        round: round+1,
+                        situation: newsituation, 
+                        payoff: map_payoffs[id],
+                        offside: offside
+                        })
                     );
                 }
 
@@ -164,6 +182,44 @@ function sendFields() {
     if(shuffleflag) { // если режим перемешивания, то для следующего периода перемешать игроков
         shufflePlayers();
         }
+    }
+
+function solveCollisionsOnFields(fields_ids,situation){
+    // form cows allocation on fields
+    let cows_fields_alloc = new Map();
+    let empty_fields = new Set(fields_ids);
+    for( [player,v] of situation.entries() ){
+        for(let e of v) {
+            if( empty_fields.delete(e) ) cows_fields_alloc.set(e,[]);
+            cows_fields_alloc.get(e).push(player);
+            }
+        }
+
+    // form allocation with 1cow-1field
+    let off_side = []; // excess cows
+    let onecow_onefield_alloc = new Map();
+    empty_fields = [... empty_fields];
+    for( [f,ar_pl] of cows_fields_alloc.entries() ){
+        // place one random cow
+        let i = random_index(ar_pl);
+        onecow_onefield_alloc.set(f,ar_pl[i]);
+        // place others to empty fields;
+        let others = Array.from(ar_pl); others.splice(i,1);
+        let cnt = Math.min(others.length, empty_fields.length);
+        for( let i = 0; i < cnt ; i++ ){
+            let [o,e] = [others.pop(), empty_fields.pop()];
+            onecow_onefield_alloc.set(e,o);
+            }
+        if( others.length > 0 ){
+            off_side.push(...others);
+            }
+
+        }
+    
+    return [onecow_onefield_alloc,off_side];
+    }
+function random_index(items){
+    return Math.floor(Math.random()*items.length);
     }
 
 function getStrategies(key) {

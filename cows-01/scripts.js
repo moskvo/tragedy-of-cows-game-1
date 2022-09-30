@@ -7,6 +7,9 @@ if (!window.WebSocket) {
 // создать подключение
 var socket = new WebSocket('ws://'+IP+':'+port);
 
+socket.onopen = function(e) {
+    console.log("[open] Соединение установлено");
+  };
 
 class TragedyOfCommons {
     constructor(n,A) {
@@ -33,20 +36,6 @@ class TragedyOfCommons {
         }
     }
 
-class Group {
-    constructor(game,players,players_ids){
-        this.choices_done = false;
-        this.players_with_choices = [];
-        this.game = game;
-        }
-
-    fixChoice(player, a) {
-        this.game.setActions(player,a);
-        this.players_with_choices.push(player);
-        if( this.players_with_choices.length == this.game.n ) { this.choices_done = true; }
-        }
-}
-
 class VideoGame {
     constructor({game, player, gamescreen_element, situation}){
         this.game = game;
@@ -54,7 +43,7 @@ class VideoGame {
         if( typeof situation === "undefined" ){
             this.situation = new Map();
             for( const p of game.players ){
-                this.situation.set(p,new Set());
+                this.situation.set(p,[]);
                 };
             }
         else{ this.situation = situation; }
@@ -83,18 +72,36 @@ class VideoGame {
         }
     addChoice(player,choice){
         let c = this.situation.get(player);
-        c.add(choice);
-        this.game.setAction(player,c.size);
+        c.push(choice);
+        this.game.setAction(player,c.length);
         this.payoff_element.textContent = this.getPayoff();
         }
-    removeChoice(choice,player=this.player){
-        let c = this.situation.get(player);
-        c.delete(choice);
-        this.game.setAction(player,c.size);
+    removeChoices(choices,player=this.player){
+        let c = this.situation.get(player).filter(e=>(!choices.includes(e)));
+        this.situation.set(player,c);
+        this.game.setAction(player,c.length);
         this.payoff_element.textContent = this.getPayoff();
         }
+        
+    wipeChoices(){
+        for( const [player,strategy] of this.situation ){
+            for( const f_id of strategy ){
+                let field = document.getElementById(f_id);
+                let cow = field.querySelector('img.cow');
+                this.upCard(cow,field);
+                if( player == this.player ){
+                    this.placeCard(cow,this.choice_set);
+                    }
+                else {
+                    cow.remove();
+                    }
+                }
+            }
+        this.removeChoices(Array.from(strategy));
+        }    
     
     async drawChoices(){
+        console.log('drawChoices')
         for( const [player,strategy] of this.situation ){
             let draggable = (player == this.player);
             for( const id of strategy ){
@@ -111,8 +118,13 @@ class VideoGame {
         }
     
     sendChoice() {
-        var outgoingMessage = JSON.stringify({choice:[...this.situation.get(this.player)]});
+        var outgoingMessage = JSON.stringify({choice:this.situation.get(this.player)});
         socket.send(outgoingMessage);   
+        }
+    getSituation(situation) {
+        this.wipeChoices();
+        this.situation = situation;
+        this.drawChoices();
         }
 
     createCard(player, draggable=true) {
@@ -143,7 +155,7 @@ class VideoGame {
         if ( oldplace.classList.contains('game-field') ) {
             oldplace.addEventListener('drop',drop);
             oldplace.addEventListener('dragover',allowDrop);
-            this.removeChoice(oldplace.id,player);
+            this.removeChoices([oldplace.id],player);
             }  
         }
     
@@ -154,13 +166,13 @@ class VideoGame {
 let videogame;
 
 document.addEventListener("DOMContentLoaded", function(event) {
-    let tgame = new TragedyOfCommons(3,12);
+    let tgame = new TragedyOfCommons(n,fieldsize);
     let opts = {
         game:tgame,
         player:1,
         gamescreen_element:document.querySelector('section.cows-game'),
-        situation: new Map([ [1,new Set()], [2,new Set(['f2','f3'])], [3,new Set(['f4','f5','f6'])] ])
-    }
+        situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
+        }
     videogame = new VideoGame(opts);
     videogame.drawChoices();
 
@@ -200,10 +212,11 @@ function dragstart(ev) {
 
 
 // обработчик входящих сообщений
-socket.onmessage = function(event) {
+/*socket.onmessage = function(event) {
     var incomingMessage = JSON.parse(event.data);
-    if(incomingMessage.HTML!=undefined) {
-        showMessage(incomingMessage.HTML);
+    if(incomingMessage.newround) {
+        videogame.situation = incomingMessage.situation;
+        videogame.drawChoices();
         }    
     if(incomingMessage.showcontrols) {
         document.getElementById("controls").style.display = 'inline-block';
@@ -211,19 +224,12 @@ socket.onmessage = function(event) {
     else {
         document.getElementById("controls").style.display = 'none';
         }
-    if(incomingMessage.x != undefined) {
-        document.getElementById('cows').innerHTML = incomingMessage.x.toString();
-        x=incomingMessage.x;
-        }
-  };
+  };*/
   
   // обработчик обрыва сокета - реконнект
   socket.onclose = function(event) {
       // перезагрузить страницу при обрыве связи
-      location.reload(true);
+      console.log('socket close')
+      //location.reload(true);
   };
   
-// показать текущее состояние поля в div#field
-function showMessage(message) {
-    document.getElementById('field').innerHTML = message;
-    }
