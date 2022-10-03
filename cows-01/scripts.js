@@ -219,8 +219,8 @@ function dragstart(ev) {
 socket.onmessage = function(event) {
     var incomingMessage = JSON.parse(event.data);
     if(incomingMessage.newround) {
-        videogame.situation = incomingMessage.situation;
-        videogame.drawChoices();
+        videogame.setSituation(new Map(incomingMessage.situation));
+        videogame.drawCards();
         }    
     if(incomingMessage.HTML){
         document.getElementById("blind").innerHTML = incomingMessage.HTML;

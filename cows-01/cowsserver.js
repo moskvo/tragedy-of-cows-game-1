@@ -1,9 +1,9 @@
 ﻿'use strict';
 
-//var http = require('http'); 
-//var Static = require('node-static');
+//let http = require('http'); 
+//let Static = require('node-static');
 
-var parameters = require("./cowsparameters");
+let parameters = require("./cowsparameters");
 const gameapi = {
     new_game: () => new parameters.TheGame(parameters.n,parameters.fieldsize),
     fields_ids: Array.from({length: parameters.n}, (_, i) => 'f'+(i+1)),
@@ -11,42 +11,42 @@ const gameapi = {
 
 console.log('FIELD SIZE = '+String(parameters.fieldsize));
 
-var WebSocketServer = new require('ws');
+let WebSocketServer = new require('ws');
 
 // глобальные переменные:
 // подключенные клиенты
-var players = {};
+let players = {};
 // их оппоненты
-var opponents = {};
+let opponents = {};
 // стратегии игроков
-var strategies = {};
+let strategies = {};
 // история выигрышей
-var history = {}; 
+let history = {}; 
 // накопленный выигрыш
-var payoffs = {}; 
+let payoffs = {}; 
 // текущий рекорд накопленного выигрыша
-var record = 0; 
+let record = 0; 
 // перемешивать игроков каждый период
-var shuffleflag = false;
+let shuffleflag = false;
 
-var groups = [];
-var player_in_group = {};
+let groups = [];
+let player_in_group = {};
 const Group = parameters.Group;
 
 
-var clients = []; // переменная, которая хранит ID сессий при комплектовании игроками игры 
-var clients_sockets = {} // переменная, которая хранит ссылку на сокет при комплектовании игроками игры
+let clients = []; // переменная, которая хранит ID сессий при комплектовании игроками игры 
+let clients_sockets = {} // переменная, которая хранит ссылку на сокет при комплектовании игроками игры
 // при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
 
 // старутем WebSocket-сервер на порту, определяемом параметрами в файле
-var webSocketServer = new WebSocketServer.Server({port: parameters.port});
+let webSocketServer = new WebSocketServer.Server({port: parameters.port});
 
 webSocketServer.on('connection', function(ws,req) { // запускается, когда новый клиент присоединяется к серверу
     if ( parameters.singleuser ) {
-        var id = req.socket.remoteAddress; // ID новой сессии - ip !менял connection на socket
+        let id = req.socket.remoteAddress; // ID новой сессии - ip !менял connection на socket
         }
     else {
-        var id = Math.random().toString()+req.socket.remoteAddress; // ID новой сессии - float от 0 до 1
+        let id = Math.random().toString()+req.socket.remoteAddress; // ID новой сессии - float от 0 до 1
         }
     clearHistory(id); // обнулить историю. при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
     
@@ -63,7 +63,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
     // Обработчики событий 
     ws.on('message', function(message) { // игроки присылают на сервер свои стратегии в сообщениях
         console.log('получено сообщение ' + message);
-        var x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
+        let x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
         if( x.action ){
             strategies[id] = x.action;
             }
@@ -77,14 +77,14 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         if (clients_sockets[id] != null) { // если сессия закрылась на этапе ожидания
             console.log('гасим ожидающую сессию id=' +id);
             delete clients_sockets[id]; // вычистить клиента из массива ожидающих сессий            
-            var index = clients.indexOf(id);
+            let index = clients.indexOf(id);
             if (index > -1) {
                clients.splice(index, 1);
             }// вычистить из списка оппонентов
 
         } else { // при закрытии играющей сессии принудительно ставятся в очередь сессии и всех оппонентов
             console.log('гасим играющую сессию id=' +id);
-            var ops = opponents[id].players; // получить список ID всех оппонентов
+            let ops = opponents[id].players; // получить список ID всех оппонентов
 
             for(let i in ops) { // сессии всех остальных оппонентов в таблицу ожидания
                 if( ops[i] != id && players[ops[i]] != null) {
@@ -131,7 +131,7 @@ setInterval(connectInfo, parameters.updateinterval);
 setInterval(sendFields, parameters.updateinterval);
 
 function connectInfo() {
-    for(var soc in clients_sockets) { // по всем клиентам, ожидающим подключения
+    for(let soc in clients_sockets) { // по всем клиентам, ожидающим подключения
         if (clients_sockets[soc]!=undefined) {
             let message={ showcontrols: false };
             message.HTML ='<p><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></p>';
@@ -148,14 +148,14 @@ function sendFields() {
 
     groups.filter(g=>g.choices_done).forEach( g=>{
         // solve game
-        let ids = g.player_ids;
+        let ids = g.players_ids;
         let situation = g.situation;
         let round = g.round;
 
         // solve possible collisions
-        const [allocation_fields,offside] = solveCollisionsOnFields(gamepi.fields_ids,situation);
+        const [allocation_fields,offside] = solveCollisionsOnFields(gameapi.fields_ids,situation);
         let newsituation = g.empty_situation();
-        for( [f,ps] of allocation_fields.entries() ){
+        for( let [f,ps] of allocation_fields.entries() ){
             newsituation.get(ps).push(f);
             }
     
@@ -164,11 +164,11 @@ function sendFields() {
         g.get_payoffs()
         .then(map_payoffs => {
             for( let id of ids ) {
-                clients_sockets[id].send(
+                players[id].send(
                     JSON.stringify({
                         newround: true,
                         round: round+1,
-                        situation: newsituation, 
+                        situation: [...newsituation], 
                         payoff: map_payoffs[id],
                         offside: offside
                         })
@@ -187,7 +187,7 @@ function solveCollisionsOnFields(fields_ids,situation){
     // form cows allocation on fields
     let cows_fields_alloc = new Map();
     let empty_fields = new Set(fields_ids);
-    for( [player,v] of situation.entries() ){
+    for( let [player,v] of situation ){
         for(let e of v) {
             if( empty_fields.delete(e) ) cows_fields_alloc.set(e,[]);
             cows_fields_alloc.get(e).push(player);
@@ -198,7 +198,7 @@ function solveCollisionsOnFields(fields_ids,situation){
     let off_side = []; // excess cows
     let onecow_onefield_alloc = new Map();
     empty_fields = [... empty_fields];
-    for( [f,ar_pl] of cows_fields_alloc.entries() ){
+    for( let [f,ar_pl] of cows_fields_alloc.entries() ){
         // place one random cow
         let i = random_index(ar_pl);
         onecow_onefield_alloc.set(f,ar_pl[i]);
@@ -222,8 +222,8 @@ function random_index(items){
     }
 
 function getStrategies(key) {
-    var ops=opponents[key].players; // для Коров на поле, игроков двое 
-    var s = {};
+    let ops=opponents[key].players; // для Коров на поле, игроков двое 
+    let s = {};
     s.x = strategies[key];
     
     
@@ -237,7 +237,7 @@ function getStrategies(key) {
 
 // нарисовать поле для игрока player при стратегиях s
 function drawField(player, s) {
-    var message='<style> table {} .tbl-field {border-collapse: collapse; align:center;}</style><style> td {} .td-field {border: 1px solid green;} </style>';
+    let message='<style> table {} .tbl-field {border-collapse: collapse; align:center;}</style><style> td {} .td-field {border: 1px solid green;} </style>';
     message+='<table class=tbl-field>';
     for (let i = 0; i < size; i++) {
         message+='<tr>';
@@ -259,7 +259,7 @@ function drawField(player, s) {
 }
 
 // обычный сервер (статика) на порту 8080
-//var fileServer = new Static.Server('.');
+//let fileServer = new Static.Server('.');
 //http.createServer(function (req, res) {
 //  
 //  fileServer.serve(req, res);
@@ -267,16 +267,16 @@ function drawField(player, s) {
 //}).listen(8080);
 
 // старутем WebSocket-сервер на порту, определяемом параметрами в файле
-var adminServer = new WebSocketServer.Server({port: parameters.adminport});
+let adminServer = new WebSocketServer.Server({port: parameters.adminport});
 
 adminServer.on('connection', function(ws) { // запускается, когда админ присоединяется к серверу
     console.log('новая админская сессия');
-    var verified = false;
+    let verified = false;
                 
     // Обработчики событий 
     ws.on('message', function(message) { // админ присылает на сервер пароль и команды обнуления статистики
         console.log('получено админское сообщение');
-        var command = JSON.parse(message); // предполагается, что команда передается в JSON 
+        let command = JSON.parse(message); // предполагается, что команда передается в JSON 
         if( command.password =='trapeznikov') { // если передан пароль, причем правильный
             verified = true;
             if(command.restart) { // если запрошен рестарт статистики
@@ -305,12 +305,12 @@ adminServer.on('connection', function(ws) { // запускается, когд�
         if(verified === false) { // отображать только авторизованным админам
             return;
             }
-        var f;
-        var bordercolor="";
-        var message = "";
-        var s;
+        let f;
+        let bordercolor="";
+        let message = "";
+        let s;
 
-        for(var key in players) { // по всем играющим клиентам
+        for(let key in players) { // по всем играющим клиентам
             if (players[key] && opponents[key].players[0] == key) { // выводим только для первого игрока в паре
                 s = getStrategies(key); // вычислить профиль стратегий
                     
@@ -324,10 +324,10 @@ adminServer.on('connection', function(ws) { // запускается, когд�
         }
         hist = '<p><div id=hist><table width=300 height=300 style="border-collapse:collapse">';
 
-        for(var i = 0; i < rho.length; i++) {
-            var row = rho[i];
+        for(let i = 0; i < rho.length; i++) {
+            let row = rho[i];
             hist+='<tr>';
-            for(var j = 0; j < row.length; j++) {
+            for(let j = 0; j < row.length; j++) {
                 b = Math.min(255,Math.max(0,Math.floor((1-rho[i][j]/maxrho)*255))).toString(16); // brightness
                 if(i<j) {
                     bordercolor='style="border: 0px;"';
@@ -349,7 +349,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
 
 // функция сбрасывает статистику по всем сессиям
 function restartStats() {
-    for(var key in players) { // по всем играющим клиентам, в том числе, неактивным
+    for(let key in players) { // по всем играющим клиентам, в том числе, неактивным
         clearHistory(key);
     }
 }
@@ -361,9 +361,9 @@ function clearHistory(id) {
 }
 
 function shufflePlayers() {
-    var allparties = Object.keys(players); // копия номеров сессий в виде массива строк!
-    var parties = allparties.filter(x => !clients.includes(x) ); // оставить только играющие сессии 
-    var newopponents={}; // новая таблица оппонентов 
+    let allparties = Object.keys(players); // копия номеров сессий в виде массива строк!
+    let parties = allparties.filter(x => !clients.includes(x) ); // оставить только играющие сессии 
+    let newopponents={}; // новая таблица оппонентов 
     console.log('Перемешиваем!');
     console.log(JSON.stringify(opponents));
     console.log(JSON.stringify(allparties));
