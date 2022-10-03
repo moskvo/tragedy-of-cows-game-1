@@ -40,13 +40,7 @@ class VideoGame {
     constructor({game, player, gamescreen_element, situation}){
         this.game = game;
         this.player = player;
-        if( typeof situation === "undefined" ){
-            this.situation = new Map();
-            for( const p of game.players ){
-                this.situation.set(p,[]);
-                };
-            }
-        else{ this.situation = situation; }
+        this.setSituation(situation);
         this.screen = gamescreen_element;
 
         let self = this;
@@ -69,21 +63,22 @@ class VideoGame {
         self.fields = document.querySelectorAll('.game-field');
         self.choice_set = document.querySelector('.choice-set');
         self.payoff_element = document.getElementById('payoff');
+        this.drawPayoff();
         }
-    addChoice(player,choice){
+    addChoice(choice,player){
         let c = this.situation.get(player);
         c.push(choice);
         this.game.setAction(player,c.length);
-        this.payoff_element.textContent = this.getPayoff();
+        //this.payoff_element.textContent = this.getPayoff();
         }
-    removeChoices(choices,player=this.player){
+    removeChoices(choices,player){
         let c = this.situation.get(player).filter(e=>(!choices.includes(e)));
         this.situation.set(player,c);
         this.game.setAction(player,c.length);
-        this.payoff_element.textContent = this.getPayoff();
+        //this.payoff_element.textContent = this.getPayoff();
         }
         
-    wipeChoices(){
+    wipeCards(){
         for( const [player,strategy] of this.situation ){
             for( const f_id of strategy ){
                 let field = document.getElementById(f_id);
@@ -97,10 +92,10 @@ class VideoGame {
                     }
                 }
             }
-        this.removeChoices(Array.from(strategy));
+        this.removeChoices(Array.from(strategy),this.player);
         }    
     
-    async drawChoices(){
+    async drawCards(){
         console.log('drawChoices')
         for( const [player,strategy] of this.situation ){
             let draggable = (player == this.player);
@@ -110,6 +105,11 @@ class VideoGame {
                 }
             }
         }
+
+    async drawPayoff(){
+        this.payoff_element.textContent = this.getPayoff();
+    }
+
 
     getPayoff(){
         console.log( this.game.to_string() );
@@ -121,10 +121,11 @@ class VideoGame {
         var outgoingMessage = JSON.stringify({choice:this.situation.get(this.player)});
         socket.send(outgoingMessage);   
         }
-    getSituation(situation) {
-        this.wipeChoices();
-        this.situation = situation;
-        this.drawChoices();
+    async setSituation(situation) {
+        this.situation = situation || new Map(game.players.map(p=>[p,[]])) ;
+        for( const [p,v] of this.situation ){
+            this.game.setAction(p,v.length);
+            }
         }
 
     createCard(player, draggable=true) {
@@ -145,7 +146,7 @@ class VideoGame {
             card.setAttribute('graze',true);
             newplace.removeEventListener('drop',drop);
             newplace.removeEventListener('dragover',allowDrop);
-            this.addChoice(player, newplace.id);
+            //this.addChoice(player, newplace.id);
             }
         newplace.appendChild(card);
         }
@@ -155,10 +156,9 @@ class VideoGame {
         if ( oldplace.classList.contains('game-field') ) {
             oldplace.addEventListener('drop',drop);
             oldplace.addEventListener('dragover',allowDrop);
-            this.removeChoices([oldplace.id],player);
+            //this.removeChoices([oldplace.id],player);
             }  
         }
-    
     
     } // class VideoGame
 
@@ -174,7 +174,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
         situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
         }
     videogame = new VideoGame(opts);
-    videogame.drawChoices();
+    videogame.drawCards();
+    videogame.drawPayoff();
 
     let blind = document.getElementById("blind");
 
@@ -193,12 +194,15 @@ function drop(event) {
     let card = interface_state.draggable;// document.getElementById(card_id);
     let oldplace = card.closest('.droppable');
     videogame.upCard( card,oldplace );
+    videogame.removeChoices([oldplace.id],videogame.player);
     // взять элемент на данных координатах
     //let elem = document.elementFromPoint(ev.clientX, ev.clientY);
     // найти ближайший сверху droppable
     let newplace = event.target.closest('.droppable');
     if( newplace === null ) { console.dir(event); }
     videogame.placeCard( card,newplace );
+    videogame.addChoice( newplace.id, videogame.player );
+    videogame.drawPayoff();
 
     //ev.target.appendChild(document.getElementById(data));
     }
