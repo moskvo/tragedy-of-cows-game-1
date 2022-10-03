@@ -9,7 +9,7 @@ const gameapi = {
     fields_ids: Array.from({length: parameters.n}, (_, i) => 'f'+(i+1)),
 };
 
-console.log('FIELD SIZE = '+String(size));
+console.log('FIELD SIZE = '+String(parameters.fieldsize));
 
 var WebSocketServer = new require('ws');
 
@@ -133,10 +133,9 @@ setInterval(sendFields, parameters.updateinterval);
 function connectInfo() {
     for(var soc in clients_sockets) { // по всем клиентам, ожидающим подключения
         if (clients_sockets[soc]!=undefined) {
-            var message={};
+            let message={ showcontrols: false };
             message.HTML ='<p><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></p>';
-            message.HTML += drawStats(soc);
-            message.showcontrols=false;
+            //message.HTML += drawStats(soc);
             clients_sockets[soc].send(JSON.stringify(message));
             }
         }

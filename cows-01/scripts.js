@@ -216,24 +216,27 @@ function dragstart(ev) {
 
 
 // обработчик входящих сообщений
-/*socket.onmessage = function(event) {
+socket.onmessage = function(event) {
     var incomingMessage = JSON.parse(event.data);
     if(incomingMessage.newround) {
         videogame.situation = incomingMessage.situation;
         videogame.drawChoices();
         }    
+    if(incomingMessage.HTML){
+        document.getElementById("blind").innerHTML = incomingMessage.HTML;
+    }
     if(incomingMessage.showcontrols) {
         document.getElementById("controls").style.display = 'inline-block';
         }
     else {
         document.getElementById("controls").style.display = 'none';
         }
-  };*/
+  };
   
   // обработчик обрыва сокета - реконнект
   socket.onclose = function(event) {
       // перезагрузить страницу при обрыве связи
-      console.log('socket close')
+      console.log('socket close, event:'+JSON.stringify(event));
       //location.reload(true);
   };
   
