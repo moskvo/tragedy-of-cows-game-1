@@ -226,10 +226,10 @@ socket.onmessage = function(event) {
         document.getElementById("blind").innerHTML = incomingMessage.HTML;
     }
     if(incomingMessage.showcontrols) {
-        document.getElementById("controls").style.display = 'inline-block';
+        document.getElementById("blind").style.visibility = 'hidden';
         }
     else {
-        document.getElementById("controls").style.display = 'none';
+        document.getElementById("blind").style.visibility = 'visible';
         }
   };
   

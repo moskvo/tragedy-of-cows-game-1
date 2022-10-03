@@ -14,8 +14,9 @@ div#blind{
   width: 640px;
   height: 100%;
   position: absolute;
-  background: #3b3b3b;
-  opacity: 0.6;
+  /*background: #3b3b3b;*/
+  background: rgba(0,0,0,0.7);
+  /*opacity: 0.6;*/
   z-index: 100;
   visibility: hidden;
 }
