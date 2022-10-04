@@ -42,11 +42,9 @@ let clients_sockets = {} // переменная, которая хранит с
 let webSocketServer = new WebSocketServer.Server({port: parameters.port});
 
 webSocketServer.on('connection', function(ws,req) { // запускается, когда новый клиент присоединяется к серверу
-    if ( parameters.singleuser ) {
-        let id = req.socket.remoteAddress; // ID новой сессии - ip !менял connection на socket
-        }
-    else {
-        let id = Math.random().toString()+req.socket.remoteAddress; // ID новой сессии - float от 0 до 1
+    let id = req.socket.remoteAddress; // ID новой сессии - ip !менял connection на socket
+    if( ! parameters.singleuser ) {
+        id = Math.random().toString()+id; // ID новой сессии - float от 0 до 1
         }
     clearHistory(id); // обнулить историю. при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
     
@@ -85,12 +83,17 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         } else { // при закрытии играющей сессии принудительно ставятся в очередь сессии и всех оппонентов
             console.log('гасим играющую сессию id=' +id);
             let ops = opponents[id].players; // получить список ID всех оппонентов
-
+            let group = player_in_group[id];
+            let groupindex = groups.indexOf(group);
+            if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
+            else{ group.splice(groupindex,1); }
+            
             for(let i in ops) { // сессии всех остальных оппонентов в таблицу ожидания
                 if( ops[i] != id && players[ops[i]] != null) {
                     addSessionToWaitingList(ops[i], players[ops[i]]); // поместить оппонентов в ожидающие сессии
                     }
                 }
+            delete player_in_group[id];
             delete players[id]; // вычистить выбывшего игрока из массива играющих сессий
             delete opponents[id]; // вычистить его из оппонентов
             delete strategies[id]; // вычистить его из стратегий
@@ -101,6 +104,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 
 function addSessionToWaitingList(player_id, wws) { // инлайновая функция
     players[player_id] = undefined; // вычистить (на всякий случай) из массива играющих сессий
+    player_in_group[player_id] = undefined;
     opponents[player_id] = undefined; // вычистить (на всякий случай) из оппонентов
     strategies[player_id] = undefined; // вычистить (на всякий случай) из стратегий
 
@@ -111,12 +115,14 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
         let g = new Group(gameapi,clients);
         g.choices_done = true; // для отправки начальной ситуации (0,0,0)
         groups.push(g);
-        for (let i of clients) {
-            players[i] = clients_sockets[i]; // поместить игрока в таблицу 
-            console.log('поместить в таблицу играющих ID='+i);
-            opponents[i] = {players:clients};  // а также запомнить его оппонентов
-            player_in_group[i] = g;
-            strategies[i] = [];         // инициализировать начальное значение стратегии (зависит от игры!!!)
+        for ( let i in clients) {
+            let id = clients[i];
+            players[id] = clients_sockets[id]; // поместить игрока в таблицу 
+            console.log('поместить в таблицу играющих ID='+id);
+            opponents[id] = {players:clients};  // а также запомнить его оппонентов
+            player_in_group[id] = g;
+            strategies[id] = []; // инициализировать начальное значение стратегии (зависит от игры!!!)
+            players[id].send(JSON.stringify( {playertype: i+1} ));
         }
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
@@ -141,9 +147,8 @@ function connectInfo() {
         }
     }
 
-        // это основная функция, которую необходимо модифицировать от игры к игре
-        // она вычисляет выигрыши всех игроков, рисует поле в html и отправляет его для отображения клиенту
-        
+// это основная функция, которую необходимо модифицировать от игры к игре
+// она вычисляет выигрыши всех игроков, рисует поле в html и отправляет его для отображения клиенту
 function sendFields() {        
 
     groups.filter(g=>g.choices_done).forEach( g=>{
@@ -155,7 +160,7 @@ function sendFields() {
         // solve possible collisions
         const [allocation_fields,offside] = solveCollisionsOnFields(gameapi.fields_ids,situation);
         let newsituation = g.empty_situation();
-        for( let [f,ps] of allocation_fields.entries() ){
+        for( let [f,ps] of allocation_fields ){
             newsituation.get(ps).push(f);
             }
     
@@ -198,7 +203,7 @@ function solveCollisionsOnFields(fields_ids,situation){
     let off_side = []; // excess cows
     let onecow_onefield_alloc = new Map();
     empty_fields = [... empty_fields];
-    for( let [f,ar_pl] of cows_fields_alloc.entries() ){
+    for( let [f,ar_pl] of cows_fields_alloc ){
         // place one random cow
         let i = random_index(ar_pl);
         onecow_onefield_alloc.set(f,ar_pl[i]);

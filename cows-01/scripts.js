@@ -164,9 +164,10 @@ class VideoGame {
 
 
 let videogame;
+let player;
 
 document.addEventListener("DOMContentLoaded", function(event) {
-    let tgame = new TragedyOfCommons(n,fieldsize);
+    /*let tgame = new TragedyOfCommons(n,fieldsize);
     let opts = {
         game:tgame,
         player:1,
@@ -175,7 +176,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
     videogame = new VideoGame(opts);
     videogame.drawCards();
-    videogame.drawPayoff();
+    videogame.drawPayoff(); */
 
     let blind = document.getElementById("blind");
 
@@ -218,19 +219,22 @@ function dragstart(ev) {
 // обработчик входящих сообщений
 socket.onmessage = function(event) {
     var incomingMessage = JSON.parse(event.data);
+    if(incomingMessage.HTML){
+        let blind = document.getElementById("blind");
+        blind.innerHTML = incomingMessage.HTML;
+        blind.style.visibility = incomingMessage.showcontrols?'hidden':'visible';
+        return;
+        }
+    if( incomingMessage.playertype ){
+        videogame.player = incomingMessage.playertype;
+        return;
+        }
     if(incomingMessage.newround) {
         videogame.setSituation(new Map(incomingMessage.situation));
         videogame.drawCards();
-        }    
-    if(incomingMessage.HTML){
-        document.getElementById("blind").innerHTML = incomingMessage.HTML;
-    }
-    if(incomingMessage.showcontrols) {
-        document.getElementById("blind").style.visibility = 'hidden';
-        }
-    else {
-        document.getElementById("blind").style.visibility = 'visible';
-        }
+        videogame.drawPayoff();
+        return;
+        } 
   };
   
   // обработчик обрыва сокета - реконнект
