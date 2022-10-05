@@ -51,7 +51,7 @@ class Group {
     constructor(gameapi,players_ids) {
         this.game = gameapi.new_game(players_ids.length);
         this.players_ids = players_ids;
-        this.players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
+        this.ids_players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
         this.situation = this.empty_situation();
         this.round = 0;
 
@@ -60,27 +60,27 @@ class Group {
         }
     
     empty_situation() {
-        return new Map(this.players_ids.map( el => [el,[]]) );
+        return new Map(this.game.players.map( el => [el,[]]) );
         }
 
     fixChoice(player_id, a) {
-        if( ! this.players_map.has(player_id) )
+        if( ! this.ids_players_map.has(player_id) )
             { return false; }
-        this.situation.set(player_id,a);
+        let current_player = this.ids_players_map.get(player_id);
+        this.situation.set(current_player,a);
 
-        let current_player = this.players_map.get(player_id);
         this.game.setAction(current_player,a.length);
         
         this.players_with_choices.push(player_id);
-        if( this.players_with_choices.length == this.players.length ) 
+        if( this.players_with_choices.length == this.players_ids.length ) 
             { this.choices_done = true; }
         }
     
     // return map id=>payoff
     async get_payoffs(){
         let m = new Map();
-        for( let [k,v] of this.players_map.entries() ){
-            m.set( k, this.game.getPayoff(v) );
+        for( let [k,v] of this.ids_players_map ){
+            m.set( v, this.game.getPayoff(v) );
             }
         return m;
         }

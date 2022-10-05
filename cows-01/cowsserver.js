@@ -6,7 +6,7 @@
 let parameters = require("./cowsparameters");
 const gameapi = {
     new_game: () => new parameters.TheGame(parameters.n,parameters.fieldsize),
-    fields_ids: Array.from({length: parameters.n}, (_, i) => 'f'+(i+1)),
+    fields_ids: Array.from({length: parameters.fieldsize}, (_, i) => 'f'+(i+1)),
 };
 
 console.log('FIELD SIZE = '+String(parameters.fieldsize));
@@ -16,16 +16,10 @@ let WebSocketServer = new require('ws');
 // глобальные переменные:
 // подключенные клиенты
 let players = {};
-// их оппоненты
-let opponents = {};
-// стратегии игроков
-let strategies = {};
 // история выигрышей
 let history = {}; 
 // накопленный выигрыш
-let payoffs = {}; 
-// текущий рекорд накопленного выигрыша
-let record = 0; 
+let payoffs = {};
 // перемешивать игроков каждый период
 let shuffleflag = false;
 
@@ -63,10 +57,8 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         console.log('получено сообщение ' + message);
         let x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
         if( x.action ){
-            strategies[id] = x.action;
             }
         if( x.choice ){
-            strategies[id] = x.choice;
             player_in_group[id].fixChoice(id,x.choice);
             }
         });
@@ -82,11 +74,13 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 
         } else { // при закрытии играющей сессии принудительно ставятся в очередь сессии и всех оппонентов
             console.log('гасим играющую сессию id=' +id);
-            let ops = opponents[id].players; // получить список ID всех оппонентов
-            let group = player_in_group[id];
-            let groupindex = groups.indexOf(group);
+            let thegroup = player_in_group[id];
+            let ops = thegroup.players_ids; // получить список ID всех оппонентов
+            
+            // удаляем группу из списка групп
+            let groupindex = groups.indexOf(thegroup);
             if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
-            else{ group.splice(groupindex,1); }
+            else{ groups.splice(groupindex,1); }
             
             for(let i in ops) { // сессии всех остальных оппонентов в таблицу ожидания
                 if( ops[i] != id && players[ops[i]] != null) {
@@ -95,8 +89,6 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
                 }
             delete player_in_group[id];
             delete players[id]; // вычистить выбывшего игрока из массива играющих сессий
-            delete opponents[id]; // вычистить его из оппонентов
-            delete strategies[id]; // вычистить его из стратегий
         }
     });
 
@@ -105,8 +97,6 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 function addSessionToWaitingList(player_id, wws) { // инлайновая функция
     players[player_id] = undefined; // вычистить (на всякий случай) из массива играющих сессий
     player_in_group[player_id] = undefined;
-    opponents[player_id] = undefined; // вычистить (на всякий случай) из оппонентов
-    strategies[player_id] = undefined; // вычистить (на всякий случай) из стратегий
 
     clients.push(player_id); // добавить новую сессию в список игроков
     clients_sockets[player_id] = wws; // добавить ссылку на сокет в список игроков
@@ -115,14 +105,12 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
         let g = new Group(gameapi,clients);
         g.choices_done = true; // для отправки начальной ситуации (0,0,0)
         groups.push(g);
-        for ( let i in clients) {
-            let id = clients[i];
+        for ( let id of clients ) {
             players[id] = clients_sockets[id]; // поместить игрока в таблицу 
+            players[id].send(JSON.stringify( 
+                {playertype: g.ids_players_map.get(id)} ));
             console.log('поместить в таблицу играющих ID='+id);
-            opponents[id] = {players:clients};  // а также запомнить его оппонентов
             player_in_group[id] = g;
-            strategies[id] = []; // инициализировать начальное значение стратегии (зависит от игры!!!)
-            players[id].send(JSON.stringify( {playertype: i+1} ));
         }
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
@@ -140,7 +128,7 @@ function connectInfo() {
     for(let soc in clients_sockets) { // по всем клиентам, ожидающим подключения
         if (clients_sockets[soc]!=undefined) {
             let message={ showcontrols: false };
-            message.HTML ='<p><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></p>';
+            message.HTML ='<div class="blind-text"><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></div>';
             //message.HTML += drawStats(soc);
             clients_sockets[soc].send(JSON.stringify(message));
             }
@@ -153,34 +141,35 @@ function sendFields() {
 
     groups.filter(g=>g.choices_done).forEach( g=>{
         // solve game
-        let ids = g.players_ids;
         let situation = g.situation;
         let round = g.round;
 
         // solve possible collisions
         const [allocation_fields,offside] = solveCollisionsOnFields(gameapi.fields_ids,situation);
         let newsituation = g.empty_situation();
-        for( let [f,ps] of allocation_fields ){
-            newsituation.get(ps).push(f);
+        for( let [f,pl] of allocation_fields ){
+            newsituation.get(pl).push(f);
             }
     
 
         // send next round payoffs and situation
         g.get_payoffs()
         .then(map_payoffs => {
-            for( let id of ids ) {
+            for( let i in g.players_ids ) {
+                let id = g.players_ids[i];
                 players[id].send(
                     JSON.stringify({
                         newround: true,
                         round: round+1,
                         situation: [...newsituation], 
-                        payoff: map_payoffs[id],
+                        payoff: map_payoffs[i],
                         offside: offside
                         })
                     );
                 }
 
-            })
+            });
+        g.next_round();
         });
 
     if(shuffleflag) { // если режим перемешивания, то для следующего периода перемешать игроков
@@ -189,12 +178,13 @@ function sendFields() {
     }
 
 function solveCollisionsOnFields(fields_ids,situation){
+    console.log([...situation]);
     // form cows allocation on fields
     let cows_fields_alloc = new Map();
     let empty_fields = new Set(fields_ids);
     for( let [player,v] of situation ){
         for(let e of v) {
-            if( empty_fields.delete(e) ) cows_fields_alloc.set(e,[]);
+            if( empty_fields.delete(e) ) { cows_fields_alloc.set(e,[]); }
             cows_fields_alloc.get(e).push(player);
             }
         }
@@ -225,20 +215,6 @@ function solveCollisionsOnFields(fields_ids,situation){
 function random_index(items){
     return Math.floor(Math.random()*items.length);
     }
-
-function getStrategies(key) {
-    let ops=opponents[key].players; // для Коров на поле, игроков двое 
-    let s = {};
-    s.x = strategies[key];
-    
-    
-    for(let i=0;i<ops.length;i++) { // получить стратегию оппонента
-        if(ops[i] != key) {
-            s.y=strategies[ops[i]];
-        }
-    }
-    return s;
-}
 
 // нарисовать поле для игрока player при стратегиях s
 function drawField(player, s) {

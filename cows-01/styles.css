@@ -47,6 +47,10 @@ div#blind{
   display: flex;
 }
 
+.blind-text {
+  background: #e2e3e4;
+}
+
 .choice-set {
   width: 100%;
   height: calc(20% - 4px);

@@ -5,11 +5,7 @@ if (!window.WebSocket) {
 }
 
 // создать подключение
-var socket = new WebSocket('ws://'+IP+':'+port);
-
-socket.onopen = function(e) {
-    console.log("[open] Соединение установлено");
-  };
+var socket;
 
 class TragedyOfCommons {
     constructor(n,A) {
@@ -32,7 +28,7 @@ class TragedyOfCommons {
         return this.actions.get(player) * (this.A - sum);
         }
     to_string(){
-        return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions.entries()]}`;
+        return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions]}`;
         }
     }
 
@@ -65,6 +61,14 @@ class VideoGame {
         self.payoff_element = document.getElementById('payoff');
         this.drawPayoff();
         }
+
+    setPlayer(player){
+        this.cows.forEach( (v,i) => {
+            v.classList.replace('player-'+this.player,'player-'+player);
+            });
+        this.player = player;
+        }
+
     addChoice(choice,player){
         let c = this.situation.get(player);
         c.push(choice);
@@ -91,24 +95,37 @@ class VideoGame {
                     cow.remove();
                     }
                 }
+            this.removeChoices(Array.from(strategy),this.player);
             }
-        this.removeChoices(Array.from(strategy),this.player);
         }    
     
     async drawCards(){
-        console.log('drawChoices')
+        console.log('drawChoices');
         for( const [player,strategy] of this.situation ){
-            let draggable = (player == this.player);
             for( const id of strategy ){
                 let field = this.screen.querySelector('#'+id);
-                this.placeCard( this.createCard(player,draggable), field, player); //field.appendChild( this.createCard(player,draggable) );
+                let card = (player == this.player) ? 
+                            this.giveLastCard() : this.createCard(player,false);
+                this.placeCard( card, field, player); //field.appendChild( this.createCard(player,draggable) );
                 }
             }
         }
 
     async drawPayoff(){
         this.payoff_element.textContent = this.getPayoff();
-    }
+        }
+
+    giveLastCard(){
+        let lastcard, cards = this.choice_set.querySelectorAll('img.cow');
+        let maxid = 'img0';
+        for( let c of cards ) {
+            if( maxid < c.id ) {
+                lastcard = c;
+                maxid = c.id;
+                }
+            }
+        return lastcard;
+        }
 
 
     getPayoff(){
@@ -122,7 +139,7 @@ class VideoGame {
         socket.send(outgoingMessage);   
         }
     async setSituation(situation) {
-        this.situation = situation || new Map(game.players.map(p=>[p,[]])) ;
+        this.situation = situation || new Map(this.game.players.map(p=>[p,[]])) ;
         for( const [p,v] of this.situation ){
             this.game.setAction(p,v.length);
             }
@@ -167,22 +184,61 @@ let videogame;
 let player;
 
 document.addEventListener("DOMContentLoaded", function(event) {
-    /*let tgame = new TragedyOfCommons(n,fieldsize);
+    let tgame = new TragedyOfCommons(n,fieldsize);
     let opts = {
         game:tgame,
         player:1,
         gamescreen_element:document.querySelector('section.cows-game'),
-        situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
+        //situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
         }
     videogame = new VideoGame(opts);
-    videogame.drawCards();
+    /*videogame.drawCards();
     videogame.drawPayoff(); */
 
-    let blind = document.getElementById("blind");
+    videogame.blind = document.getElementById("blind");
 
     let btn = document.getElementById("send");
-    btn.onclick = function() { blind.style.visibility = 'visible'; };
+    btn.onclick = function() { 
+        videogame.blind.style.visibility = 'visible';
+        videogame.sendChoice();
+    };
+    
+    socket = new WebSocket('ws://'+IP+':'+port);
 
+    socket.onopen = function(e) {
+        console.log("[open] Соединение установлено");
+      };
+    
+    // обработчик входящих сообщений
+    socket.onmessage = function(event) {
+        var incomingMessage = JSON.parse(event.data);
+        console.log( incomingMessage );
+        if(incomingMessage.HTML){
+            videogame.blind.innerHTML = incomingMessage.HTML;
+            videogame.blind.style.visibility = incomingMessage.showcontrols?'hidden':'visible';
+            return;
+            }
+        if( incomingMessage.playertype ){
+            videogame.setPlayer(incomingMessage.playertype);
+            return;
+            }
+        if( incomingMessage.newround ) {
+            videogame.wipeCards();
+            videogame.blind.style.visibility = 'hidden';
+            videogame.setSituation(new Map(incomingMessage.situation));
+            videogame.drawCards();
+            videogame.drawPayoff();
+            return;
+            } 
+        };
+    
+    // обработчик обрыва сокета - реконнект
+    socket.onclose = function(event) {
+        // перезагрузить страницу при обрыве связи
+        console.log('socket close, event:'+JSON.stringify(event));
+        //location.reload(true);
+        };
+    
     });
 
 const interface_state = {
@@ -202,8 +258,11 @@ function drop(event) {
     let newplace = event.target.closest('.droppable');
     if( newplace === null ) { console.dir(event); }
     videogame.placeCard( card,newplace );
-    videogame.addChoice( newplace.id, videogame.player );
+    if( ! newplace.classList.contains('choice-set') ) {
+        videogame.addChoice( newplace.id, videogame.player );
+        }
     videogame.drawPayoff();
+
 
     //ev.target.appendChild(document.getElementById(data));
     }
@@ -214,33 +273,3 @@ function dragstart(ev) {
     ev.dataTransfer.setData("text", ev.target.id);
     interface_state.draggable = ev.target;
     }
-
-
-// обработчик входящих сообщений
-socket.onmessage = function(event) {
-    var incomingMessage = JSON.parse(event.data);
-    if(incomingMessage.HTML){
-        let blind = document.getElementById("blind");
-        blind.innerHTML = incomingMessage.HTML;
-        blind.style.visibility = incomingMessage.showcontrols?'hidden':'visible';
-        return;
-        }
-    if( incomingMessage.playertype ){
-        videogame.player = incomingMessage.playertype;
-        return;
-        }
-    if(incomingMessage.newround) {
-        videogame.setSituation(new Map(incomingMessage.situation));
-        videogame.drawCards();
-        videogame.drawPayoff();
-        return;
-        } 
-  };
-  
-  // обработчик обрыва сокета - реконнект
-  socket.onclose = function(event) {
-      // перезагрузить страницу при обрыве связи
-      console.log('socket close, event:'+JSON.stringify(event));
-      //location.reload(true);
-  };
-  
