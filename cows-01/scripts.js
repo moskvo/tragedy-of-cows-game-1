@@ -6,6 +6,9 @@ if (!window.WebSocket) {
 
 // создать подключение
 var socket;
+function sendChoice(choice) {
+    socket.send(JSON.stringify({choice}));
+    }
 
 class TragedyOfCommons {
     constructor(n,A) {
@@ -133,11 +136,7 @@ class VideoGame {
         console.log( [...this.situation]);
         return this.game.getPayoff(this.player);
         }
-    
-    sendChoice() {
-        var outgoingMessage = JSON.stringify({choice:this.situation.get(this.player)});
-        socket.send(outgoingMessage);   
-        }
+            
     async setSituation(situation) {
         this.situation = situation || new Map(this.game.players.map(p=>[p,[]])) ;
         for( const [p,v] of this.situation ){
@@ -198,9 +197,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
     videogame.blind = document.getElementById("blind");
 
     let btn = document.getElementById("send");
-    btn.onclick = function() { 
+    btn.onclick = function() {
         videogame.blind.style.visibility = 'visible';
-        videogame.sendChoice();
+        sendChoice( videogame.situation.get(videogame.player) );
     };
     
     socket = new WebSocket('ws://'+IP+':'+port);

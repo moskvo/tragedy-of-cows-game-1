@@ -23,7 +23,7 @@ div#blind{
 
 .cows-game {
   width: 640px;
-  height: 800px;
+  height: 900px;
   margin: auto;
   display: flex;
   flex-wrap: wrap;
@@ -60,7 +60,8 @@ div#blind{
 
 .game-field {
   width: calc(25% - 4px);
-  height: calc(20% - 4px);
+  /*height: width; calc(20% - 4px);*/
+  aspect-ratio: 1;
   margin: 2px;
   padding: 2px;
   position: relative;
