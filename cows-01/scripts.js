@@ -2,7 +2,7 @@
 
 if (!window.WebSocket) {
 	document.body.innerHTML = 'WebSocket в этом браузере не поддерживается.';
-}
+    }
 
 // создать подключение
 var socket;
@@ -41,6 +41,41 @@ class VideoGame {
         this.player = player;
         this.setSituation(situation);
         this.screen = gamescreen_element;
+        this.choice_set = gamescreen_element.querySelector('.choice-set');
+        if( game.n == 5 ){
+            this.screen.style.setProperty('--columns-number', 6);
+            this.screen.style.setProperty('--rows-number', 5);
+            
+            for( let i = 0, id = 1 ; i < 5 ; i++ ) {
+                for( let j = 0 ; j < 6 ; j++ ) {
+                    this.screen.appendChild(this.createField('grass','f'+id))
+                       id++
+                    }
+                }
+            }
+        else if( game.n == 3 ) {
+            this.screen.style.setProperty('--columns-number', 4);
+            this.screen.style.setProperty('--rows-number', 4);
+
+            this.screen.appendChild(this.createField('ground'))
+            this.screen.appendChild(this.createField('grass','f1'))
+            this.screen.appendChild(this.createField('grass','f2'))
+            this.screen.appendChild(this.createField('ground'))
+
+            // fields f3-f10
+            Array.from({length: 8}, (_, i) => 
+                this.screen.appendChild(this.createField('grass','f'+(3+i)))
+                )
+
+            this.screen.appendChild(this.createField('ground'))
+            this.screen.appendChild(this.createField('grass','f11'))
+            this.screen.appendChild(this.createField('grass','f12'))
+            this.screen.appendChild(this.createField('ground'))
+        }
+        else {
+            alert('wrong players count! Not 3 or 5')
+        }
+        
 
         let self = this;
 
@@ -59,9 +94,8 @@ class VideoGame {
             self.cows_conf.set(v.id,{left:i*50 + 'px'})
             });
         
-        self.fields = document.querySelectorAll('.game-field');
-        self.choice_set = document.querySelector('.choice-set');
-        self.payoff_element = document.getElementById('payoff');
+        self.fields = this.screen.querySelectorAll('.game-field');
+        self.payoff_element = this.screen.querySelector('#payoff');
         this.drawPayoff();
         }
 
@@ -88,7 +122,7 @@ class VideoGame {
     wipeCards(){
         for( const [player,strategy] of this.situation ){
             for( const f_id of strategy ){
-                let field = document.getElementById(f_id);
+                let field = this.screen.querySelector('#'+f_id);
                 let cow = field.querySelector('img.cow');
                 this.upCard(cow,field);
                 if( player == this.player ){
@@ -144,11 +178,21 @@ class VideoGame {
             }
         }
 
-    createCard(player, draggable=true) {
+    createField(grass, id=null) {
+        var field = document.createElement("div");
+        if( grass == 'grass' )
+            field.classList.add('game-field', 'grass-field', 'droppable');
+        else
+            field.classList.add('game-field', 'ground-field');
+        if ( id ) field.id = id;
+        return field;
+        }
+    createCard(player, draggable=true, id=null) {
         var card = document.createElement("img");
         card.classList.add('cow', 'player-'+player);
         card.setAttribute('src',"img/cow.png");
         card.setAttribute('draggable',draggable);
+        if ( id ) card.id = id;
         return card;
         }
     
@@ -180,9 +224,9 @@ class VideoGame {
 
 
 let videogame;
-let player;
 
 document.addEventListener("DOMContentLoaded", function(event) {
+    let fieldsize = (n==3) ? 12 : 30;
     let tgame = new TragedyOfCommons(n,fieldsize);
     let opts = {
         game:tgame,

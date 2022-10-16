@@ -1,3 +1,10 @@
+/*:root {
+  --game-width: 640px;
+  --game-height: 900px;
+  --columns-number: 4;
+  --rows-number: 4; 
+}*/
+
 * {
   padding: 0;
   margin: 0;
@@ -11,19 +18,24 @@ body {
 }
 
 div#blind{
-  width: 640px;
+  width: var(--game-width);
   height: 100%;
   position: absolute;
-  /*background: #3b3b3b;*/
   background: rgba(0,0,0,0.7);
-  /*opacity: 0.6;*/
   z-index: 100;
   visibility: hidden;
 }
+.blind-text {
+  background: #e2e3e4;
+}
 
 .cows-game {
-  width: 640px;
-  height: 900px;
+  --game-width: 640px;
+  --game-height: 900px;
+  --columns-number: 4;
+  --rows-number: 4; 
+  width: var(--game-width);
+  height: var(--gmae-height);
   margin: auto;
   display: flex;
   flex-wrap: wrap;
@@ -42,25 +54,20 @@ div#blind{
   align-items: center;
   display: flex;
 }
-
 .text-info {
   display: flex;
 }
 
-.blind-text {
-  background: #e2e3e4;
-}
 
 .choice-set {
   width: 100%;
-  height: calc(20% - 4px);
+  height: calc(var(--game-width) / var(--columns-number) - 4px);
   position: relative;
   display: flex;
 }
 
 .game-field {
-  width: calc(25% - 4px);
-  /*height: width; calc(20% - 4px);*/
+  width: calc(100% / var(--columns-number) - 4px);
   aspect-ratio: 1;
   margin: 2px;
   padding: 2px;
@@ -68,16 +75,6 @@ div#blind{
   display: flex;
   border-radius: 2px;
 }
-
-.memory-card {
-  width: calc(25% - 4px);
-  height: calc(100% - 4px);
-  margin: auto;
-  padding: 10px;
-  position: relative;
-  box-shadow: 1px 1px 1px rgba(0,0,0,.3);
-}
-
 .grass-field {
   background: #04b11e;
 }
@@ -85,15 +82,9 @@ div#blind{
   background: #808080;
 }
 
-
-.memory-card:active {
-  transform: scale(0.97);
-  transition: transform .2s;
-}
-
 .cow {
-  width: calc(160px - 10px);
-  height: calc(160px - 10px);
+  width: calc(var(--game-width) / var(--columns-number) - 10px);
+  aspect-ratio: 1;
   padding: 20px;
   margin: 2px;
   position: absolute;
@@ -104,13 +95,17 @@ div#blind{
 .player-1 {
   background: orange;
 }
-
 .player-2 {
   background: hsl(120, 99%, 29%);
 }
-
 .player-3 {
   background: rgb(31, 64, 253);
+}
+.player-4 {
+  background: rgb(230, 255, 2);
+}
+.player-5 {
+  background: rgb(190, 57, 252);
 }
 
 
