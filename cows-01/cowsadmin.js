@@ -1,4 +1,6 @@
-﻿if (!window.WebSocket) {
+﻿'use strict';
+
+if (!window.WebSocket) {
      document.body.innerHTML = 'WebSocket в этом браузере не поддерживается.';
 }
 

@@ -42,7 +42,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         }
     clearHistory(id); // обнулить историю. при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
     
-    if ( players[id] != undefined || clients_sockets[id] != undefined ) { // запретить сессии с одинаковым ID
+    if ( players[id] !== undefined || clients_sockets[id] !== undefined ) { // запретить сессии с одинаковым ID
         ws.send(JSON.stringify({HTML: "<h1>Одному игроку запрещено запускать несколько игровых сессий!</h1>"}));
         console.log("дублирующая сессия, ID = "+id);
         //ws.close();
@@ -126,7 +126,7 @@ setInterval(sendFields, parameters.updateinterval);
 
 function connectInfo() {
     for(let soc in clients_sockets) { // по всем клиентам, ожидающим подключения
-        if (clients_sockets[soc]!=undefined) {
+        if (clients_sockets[soc] !== undefined) {
             let message={ showcontrols: false };
             message.HTML ='<div class="blind-text"><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></div>';
             //message.HTML += drawStats(soc);
@@ -258,7 +258,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
     ws.on('message', function(message) { // админ присылает на сервер пароль и команды обнуления статистики
         console.log('получено админское сообщение');
         let command = JSON.parse(message); // предполагается, что команда передается в JSON 
-        if( command.password =='trapeznikov') { // если передан пароль, причем правильный
+        if( command.password == 'trapeznikov') { // если передан пароль, причем правильный
             verified = true;
             if(command.restart) { // если запрошен рестарт статистики
                 console.log('запрошен рестарт');
@@ -283,7 +283,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
     setInterval(sendAdmin, parameters.updateinterval);
     
     function sendAdmin() {
-        if(verified === false) { // отображать только авторизованным админам
+        if(verified == false) { // отображать только авторизованным админам
             return;
             }
         let f;
@@ -303,13 +303,13 @@ adminServer.on('connection', function(ws) { // запускается, когд�
                 message +='</div>';
             }
         }
-        hist = '<p><div id=hist><table width=300 height=300 style="border-collapse:collapse">';
+        let hist = '<p><div id=hist><table width=300 height=300 style="border-collapse:collapse">';
 
         for(let i = 0; i < rho.length; i++) {
             let row = rho[i];
             hist+='<tr>';
             for(let j = 0; j < row.length; j++) {
-                b = Math.min(255,Math.max(0,Math.floor((1-rho[i][j]/maxrho)*255))).toString(16); // brightness
+                let b = Math.min(255,Math.max(0,Math.floor((1-rho[i][j]/maxrho)*255))).toString(16); // brightness
                 if(i<j) {
                     bordercolor='style="border: 0px;"';
                 } else if(Math.round(i-size*size/3)==0 && Math.round(j-size*size/3)==0) {
@@ -350,7 +350,7 @@ function shufflePlayers() {
     console.log(JSON.stringify(allparties));
     shuffle(parties); // перемешать клиентские сессии
     for(let i=0;i<parties.length; i+=parameters.n) { // перечислить все новые комплекты игроков
-        ops = parties.slice(i, i+parameters.n);
+        let ops = parties.slice(i, i+parameters.n);
         for(let j=0;j<ops.length; j++) {
             newopponents[ops[j]]={players:ops};
         }
