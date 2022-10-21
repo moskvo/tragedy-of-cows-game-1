@@ -38,10 +38,29 @@ class TragedyOfCommons {
 class VideoGame {
     constructor({game, player, gamescreen_element, situation}){
         this.game = game;
-        this.player = player;
+        if( Array.isArray(player) ) {
+            this.players = player
+            this.player = player[0]
+            }
+        else {
+            this.players = [player];
+            this.player = player;
+            } 
         this.setSituation(situation);
         this.screen = gamescreen_element;
-        this.choice_set = gamescreen_element.querySelector('.choice-set');
+
+        // create cowcards and their place - 'choice sets'
+        this.choice_set = this.screen.querySelector('div.choice-set');
+        this.choice_sets = {};
+        let cows_per_player = this.game.n == 3 ? 9 : 20
+        //let cow_width = this.screen.style.getPropertyValue()
+        this.cows_conf = new Map(); // conf of cowcards positions, changing by createChoiceSet
+        for( let p of this.players ){
+            let c = this.createChoiceSet(p, cows_per_player)
+            this.choice_set.appendChild( c )
+            this.choice_sets[p] = c
+            }
+        // create fields
         if( game.n == 5 ){
             this.screen.style.setProperty('--columns-number', 6);
             this.screen.style.setProperty('--rows-number', 5);
@@ -71,31 +90,19 @@ class VideoGame {
             this.screen.appendChild(this.createField('grass','f11'))
             this.screen.appendChild(this.createField('grass','f12'))
             this.screen.appendChild(this.createField('ground'))
-        }
+            }
         else {
             alert('wrong players count! Not 3 or 5')
-        }
+            }
         
-
-        let self = this;
-
         this.screen.querySelectorAll('.droppable').forEach((v)=>{
             v.addEventListener('drop',drop);
             v.addEventListener('dragover',allowDrop);
             })
         
-        this.cows = this.screen.querySelectorAll('.cow');
-        this.cows_conf = new Map();
-        this.cows.forEach( (v,i) => {
-            v.addEventListener('dragstart',dragstart);
-            v.setAttribute('draggable', true);
-            v.classList.add('player-'+self.player);
-            v.style.left = i*50 + 'px';
-            self.cows_conf.set(v.id,{left:i*50 + 'px'})
-            });
-        
-        self.fields = this.screen.querySelectorAll('.game-field');
-        self.payoff_element = this.screen.querySelector('#payoff');
+        this.cows = this.screen.querySelectorAll('.cow');        
+        this.fields = this.screen.querySelectorAll('.game-field');
+        this.payoff_element = this.screen.querySelector('#payoff');
         this.drawPayoff();
         }
 
@@ -125,8 +132,8 @@ class VideoGame {
                 let field = this.screen.querySelector('#'+f_id);
                 let cow = field.querySelector('img.cow');
                 this.upCard(cow,field);
-                if( player == this.player ){
-                    this.placeCard(cow,this.choice_set);
+                if( this.players.includes(player) ){
+                    this.placeCard(cow,this.choice_sets[player]);
                     }
                 else {
                     cow.remove();
@@ -142,7 +149,7 @@ class VideoGame {
             for( const id of strategy ){
                 let field = this.screen.querySelector('#'+id);
                 let card = (player == this.player) ? 
-                            this.giveLastCard() : this.createCard(player,false);
+                            this.giveLastCard(player) : this.createCard(player,false);
                 this.placeCard( card, field, player); //field.appendChild( this.createCard(player,draggable) );
                 }
             }
@@ -152,13 +159,14 @@ class VideoGame {
         this.payoff_element.textContent = this.getPayoff();
         }
 
-    giveLastCard(){
-        let lastcard, cards = this.choice_set.querySelectorAll('img.cow');
-        let maxid = 'img0';
+    giveLastCard(player){
+        let lastcard, cards = this.choice_sets[player].querySelectorAll('img.cow');
+        let maxid = 0;
         for( let c of cards ) {
-            if( maxid < c.id ) {
+            let ord = parseInt(c.getAttribute('myorder'))
+            if( maxid < ord ) {
                 lastcard = c;
-                maxid = c.id;
+                maxid = ord;
                 }
             }
         return lastcard;
@@ -192,12 +200,13 @@ class VideoGame {
         card.classList.add('cow', 'player-'+player);
         card.setAttribute('src',"img/cow.png");
         card.setAttribute('draggable',draggable);
+        card.setAttribute('player',player)
         if ( id ) card.id = id;
         return card;
         }
     
-    placeCard(card,newplace,player=this.player) {
-        if( newplace.classList.contains('choice-set') ){
+    placeCard(card,newplace,player) {
+        if( newplace.classList.contains('choice-set-'+player) ){
             card.style.left = this.cows_conf.get(card.id).left;
             card.removeAttribute('graze');
             }
@@ -220,6 +229,29 @@ class VideoGame {
             }  
         }
     
+    createChoiceSet(forplayer, cows_per_player=9){
+        let chset = document.createElement("div")
+        chset.classList.add('choice-set-'+forplayer, 'droppable')
+        chset.style.width = (100/this.players.length)+'%';
+        let cs = getComputedStyle(this.screen)
+        let cowwidth = parseInt(cs.getPropertyValue('--game-width'))
+                 / parseInt(cs.getPropertyValue('--columns-number')) - 10 ;
+        let dw = cs.getPropertyValue('--game-width')
+        dw = ((parseInt(dw) / this.players.length) - cowwidth) / cows_per_player;
+        for( let i=0, cow ; i < cows_per_player ; i++ ){
+            //<img id="img1" class="cow" src="img/cow.png" alt="Cow card" />
+            cow = this.createCard(forplayer)
+            cow.id = 'img'+forplayer+'-'+(i+1)
+            cow.setAttribute('myorder',i)
+            chset.appendChild(cow)
+            cow.style.left = i*dw + 'px';
+            this.cows_conf.set(cow.id,{left:i*dw + 'px'})
+
+            cow.addEventListener('dragstart',dragstart);
+            }
+        return chset
+        }
+    
     } // class VideoGame
 
 
@@ -230,13 +262,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
     let tgame = new TragedyOfCommons(n,fieldsize);
     let opts = {
         game:tgame,
-        player:1,
+        player:[1,2],
         gamescreen_element:document.querySelector('section.cows-game'),
         //situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
         }
     videogame = new VideoGame(opts);
-    /*videogame.drawCards();
-    videogame.drawPayoff(); */
 
     videogame.blind = document.getElementById("blind");
 
@@ -244,14 +274,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
     btn.onclick = function() {
         videogame.blind.style.visibility = 'visible';
         sendChoice( videogame.situation.get(videogame.player) );
-    };
+        };
     
     socket = new WebSocket('ws://'+IP+':'+port);
-
-    socket.onopen = function(e) {
-        console.log("[open] Соединение установлено");
-      };
-    
+    socket.onopen = (e) => console.log("[open] Соединение установлено")
     // обработчик входящих сообщений
     socket.onmessage = function(event) {
         var incomingMessage = JSON.parse(event.data);
@@ -293,19 +319,19 @@ function drop(event) {
     //let card_id = ev.dataTransfer.getData("text");
     let card = interface_state.draggable;// document.getElementById(card_id);
     let oldplace = card.closest('.droppable');
+    let player = parseInt(card.getAttribute('player'));
     videogame.upCard( card,oldplace );
-    videogame.removeChoices([oldplace.id],videogame.player);
+    videogame.removeChoices([oldplace.id],player);
     // взять элемент на данных координатах
     //let elem = document.elementFromPoint(ev.clientX, ev.clientY);
     // найти ближайший сверху droppable
     let newplace = event.target.closest('.droppable');
     if( newplace === null ) { console.dir(event); }
-    videogame.placeCard( card,newplace );
-    if( ! newplace.classList.contains('choice-set') ) {
-        videogame.addChoice( newplace.id, videogame.player );
+    videogame.placeCard( card, newplace, player );
+    if( ! newplace.classList.contains('choice-set-'+player) ) {
+        videogame.addChoice( newplace.id, player );
         }
     videogame.drawPayoff();
-
 
     //ev.target.appendChild(document.getElementById(data));
     }

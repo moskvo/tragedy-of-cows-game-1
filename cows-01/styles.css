@@ -17,18 +17,6 @@ body {
   background: #001d9c;
 }
 
-div#blind{
-  width: var(--game-width);
-  height: 100%;
-  position: absolute;
-  background: rgba(0,0,0,0.7);
-  z-index: 100;
-  visibility: hidden;
-}
-.blind-text {
-  background: #e2e3e4;
-}
-
 .cows-game {
   --game-width: 640px;
   --game-height: 900px;
@@ -40,6 +28,18 @@ div#blind{
   display: flex;
   flex-wrap: wrap;
   perspective: 1000px;
+}
+
+div#blind{
+  width: var(--game-width);
+  height: 100%;
+  position: absolute;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  visibility: hidden;
+}
+.blind-text {
+  background: #e2e3e4;
 }
 
 .info {
@@ -62,7 +62,24 @@ div#blind{
 .choice-set {
   width: 100%;
   height: calc(var(--game-width) / var(--columns-number) - 4px);
+  display: flex;
+}
+
+.choice-set-1 {
   position: relative;
+  background: rgba(255, 166, 0, 0.705);
+  height: 100%;
+}
+.choice-set-2{
+  position: relative;
+  background: hsla(120, 99%, 29%, 0.705);
+  height: 100%;
+  display: flex;
+}
+.choice-set-3 {
+  position: relative;
+  background: rgba(31, 64, 253, 0.705);
+  height: 100%;
   display: flex;
 }
 
@@ -90,6 +107,7 @@ div#blind{
   position: absolute;
   border-radius: 5px;
   background: #1C7CCC;
+  border: 1px solid;
 }
 
 .player-1 {
