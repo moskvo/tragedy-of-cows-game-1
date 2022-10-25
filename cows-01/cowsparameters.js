@@ -6,49 +6,14 @@ module.exports.port = '8081'; // порт, на котором открывае�
 module.exports.adminport = '8082'; // порт, на котором открывается WebSocket для администрирования
 module.exports.updateinterval = 2000; // интервал обновления клиентов (в мс)
 module.exports.historydepth = 100; // глубина истории
-module.exports.sleeptime = 5000; // частота смены стратегии
-module.exports.expdecay = 0.9; // вес истории при экспоненциальном сглаживаниии выигрышей
-module.exports.trace = 0.5; // вес истории при экспоненциальном сглаживаниии траекторий
 
 module.exports.singleuser = false; // разрешать только одну сессию с одного IP  
 
-class TragedyOfCommons {
-    constructor(n,A) {
-        this.players = Array.from({length: n}, (_, i) => i + 1);
-        this.A = A;
-        this.actions = new Map( this.players.map( p => [p, 0] ) );
-        }
-    
-    get n(){
-        return this.players.length;
-        }
-
-    setAction(player, a) {
-        this.actions.set(player,a);
-        }
-
-    getPayoff(player){
-        let sum = 0;
-        this.actions.forEach( (v,k) => sum += v );
-        return this.actions.get(player) * (this.A - sum);
-        }
-    
-    getPayoffs(){
-        let sum = 0;
-        this.actions.forEach( (v,k) => sum += v );
-        return this.actions.get(player) * (this.A - sum);
-
-        }
-
-    to_string(){
-        return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions.entries()]}`;
-        }
-    }
-
-module.exports.TheGame = TragedyOfCommons;
-
 class Group {
+    static count = 0;
     constructor(gameapi,players_ids) {
+        Group.count += 1;
+        this.number = Group.count;
         this.game = gameapi.new_game(players_ids.length);
         this.players_ids = players_ids;
         this.ids_players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));

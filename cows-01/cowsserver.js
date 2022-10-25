@@ -7,7 +7,7 @@ let parameters = require("./cowsparameters");
 const gameapi = {
     new_game: () => new parameters.TheGame(parameters.n,parameters.fieldsize),
     fields_ids: Array.from({length: parameters.fieldsize}, (_, i) => 'f'+(i+1)),
-};
+    };
 
 console.log('FIELD SIZE = '+String(parameters.fieldsize));
 
@@ -114,8 +114,8 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
         }
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
+        }
     }
-}
 
 
 // Посылать информацию о подключении каждые updateinterval милисекунд
@@ -170,6 +170,7 @@ function sendFields() {
 
             });
         g.next_round();
+        // 
         });
 
     if(shuffleflag) { // если режим перемешивания, то для следующего периода перемешать игроков
