@@ -11,17 +11,24 @@ module.exports.singleuser = false; // разрешать только одну �
 
 class Group {
     static count = 0;
-    constructor(gameapi,players_ids) {
+    constructor(technology_socket,players_ids,players_sockets) {
         Group.count += 1;
         this.number = Group.count;
-        this.game = gameapi.new_game(players_ids.length);
+        this.tech_socket = technology_socket;
+        //this.game = gameapi.new_game(players_ids.length);
         this.players_ids = players_ids;
-        this.ids_players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
+        this.players = Array.from({length: players_ids.length}, (_, i) => i + 1);
+        this.ids_players_map = new Map(this.players.map( (e,i)=> [players_ids[i], e] ));
         this.situation = this.empty_situation();
         this.round = 0;
 
         this.choices_done = false;
-        this.players_with_choices = [];        
+        this.players_with_choices = [];
+
+        // Обработчики событий 
+        for( let id of players_ids ){
+            players_sockets[id].on('message', sock_on_message(this,id))
+            }
         }
     
     empty_situation() {
@@ -37,8 +44,10 @@ class Group {
         this.game.setAction(current_player,a.length);
         
         this.players_with_choices.push(player_id);
-        if( this.players_with_choices.length == this.players_ids.length ) 
-            { this.choices_done = true; }
+        if( this.players_with_choices.length == this.players_ids.length ) { 
+            this.choices_done = true; 
+            this.tech_player.send( JSON.stringify([...this.game.actions]) );
+            }
         }
     
     // return map id=>payoff
@@ -55,5 +64,18 @@ class Group {
         this.players_with_choices = [];
         }
     }
+
+function sock_on_message(group,id){
+    return function(message) { // игроки присылают на сервер свои стратегии в сообщениях
+        console.log('получено сообщение ' + message);
+        let x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
+        if( x.action ){
+            }
+        if( x.choice ){
+            group.fixChoice(id,x.choice);
+            }
+        };
+    }
+
 
 module.exports.Group = Group;

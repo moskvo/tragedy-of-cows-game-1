@@ -2,7 +2,7 @@
 
 if (!window.WebSocket) {
      document.body.innerHTML = 'WebSocket в этом браузере не поддерживается.';
-}
+    }
 
 // создать подключение
 var socket;
@@ -12,20 +12,20 @@ function connect() {
     var outgoingMessage = JSON.stringify({password: document.getElementById('adminPassword').value});
     socket.send(outgoingMessage);
     return false;
-}
+    }
 
 // обнулить статистику
 function restart() {  
     var outgoingMessage = JSON.stringify({password: document.getElementById('adminPassword').value, restart: 1});
     socket.send(outgoingMessage);
     return false;
-}
+    }
 // перемешать игроков
 function shuffle() {  
     var outgoingMessage = JSON.stringify({password: document.getElementById('adminPassword').value, shuffle: document.getElementById('shuffle').checked});
     socket.send(outgoingMessage);
     return false;
-}
+    }
 
 // показать текущее состояние поля в div#field
 function showMessage(message) {

@@ -4,14 +4,14 @@
 //let Static = require('node-static');
 
 let parameters = require("./cowsparameters");
+let WebSocketServer = new require('ws');
+
 const gameapi = {
     new_game: () => new parameters.TheGame(parameters.n,parameters.fieldsize),
     fields_ids: Array.from({length: parameters.fieldsize}, (_, i) => 'f'+(i+1)),
     };
 
 console.log('FIELD SIZE = '+String(parameters.fieldsize));
-
-let WebSocketServer = new require('ws');
 
 // глобальные переменные:
 // подключенные клиенты
@@ -24,7 +24,7 @@ let payoffs = {};
 let shuffleflag = false;
 
 let groups = [];
-let player_in_group = {};
+let group_of_player = {};
 const Group = parameters.Group;
 
 
@@ -42,7 +42,8 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         }
     clearHistory(id); // обнулить историю. при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
     
-    if ( players[id] != undefined || clients_sockets[id] != undefined ) { // запретить сессии с одинаковым ID
+    // запрет сессий с одинаковым ID
+    if ( players[id] != undefined || clients_sockets[id] != undefined ) {
         ws.send(JSON.stringify({HTML: "<h1>Одному игроку запрещено запускать несколько игровых сессий!</h1>"}));
         console.log("дублирующая сессия, ID = "+id);
         //ws.close();
@@ -51,18 +52,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
     console.log("новая сессия, ID = "+id);
 
     addSessionToWaitingList(id, ws);
-    
-    // Обработчики событий 
-    ws.on('message', function(message) { // игроки присылают на сервер свои стратегии в сообщениях
-        console.log('получено сообщение ' + message);
-        let x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
-        if( x.action ){
-            }
-        if( x.choice ){
-            player_in_group[id].fixChoice(id,x.choice);
-            }
-        });
-    
+       
     ws.on('close', function() { // обработка закрытия сессии
         if (clients_sockets[id] != null) { // если сессия закрылась на этапе ожидания
             console.log('гасим ожидающую сессию id=' +id);
@@ -74,7 +64,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 
         } else { // при закрытии играющей сессии принудительно ставятся в очередь сессии и всех оппонентов
             console.log('гасим играющую сессию id=' +id);
-            let thegroup = player_in_group[id];
+            let thegroup = group_of_player[id];
             let ops = thegroup.players_ids; // получить список ID всех оппонентов
             
             // удаляем группу из списка групп
@@ -87,7 +77,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
                     addSessionToWaitingList(ops[i], players[ops[i]]); // поместить оппонентов в ожидающие сессии
                     }
                 }
-            delete player_in_group[id];
+            delete group_of_player[id];
             delete players[id]; // вычистить выбывшего игрока из массива играющих сессий
         }
     });
@@ -96,13 +86,13 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 
 function addSessionToWaitingList(player_id, wws) { // инлайновая функция
     players[player_id] = undefined; // вычистить (на всякий случай) из массива играющих сессий
-    player_in_group[player_id] = undefined;
+    group_of_player[player_id] = undefined;
 
     clients.push(player_id); // добавить новую сессию в список игроков
     clients_sockets[player_id] = wws; // добавить ссылку на сокет в список игроков
     
-    if(clients.length == parameters.n) { // если набрался полный комплект участников 
-        let g = new Group(gameapi,clients);
+    if ( clients.length == parameters.n ) { // если набрался полный комплект участников 
+        let g = new Group(gameapi,clients,clients_sockets);
         g.choices_done = true; // для отправки начальной ситуации (0,0,0)
         groups.push(g);
         for ( let id of clients ) {
@@ -110,8 +100,8 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
             players[id].send(JSON.stringify( 
                 {playertype: g.ids_players_map.get(id)} ));
             console.log('поместить в таблицу играющих ID='+id);
-            player_in_group[id] = g;
-        }
+            group_of_player[id] = g;
+            }
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
         }
@@ -129,7 +119,6 @@ function connectInfo() {
         if (clients_sockets[soc]!=undefined) {
             let message={ showcontrols: false };
             message.HTML ='<div class="blind-text"><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></div>';
-            //message.HTML += drawStats(soc);
             clients_sockets[soc].send(JSON.stringify(message));
             }
         }
@@ -138,7 +127,6 @@ function connectInfo() {
 // это основная функция, которую необходимо модифицировать от игры к игре
 // она вычисляет выигрыши всех игроков, рисует поле в html и отправляет его для отображения клиенту
 function sendFields() {        
-
     groups.filter(g=>g.choices_done).forEach( g=>{
         // solve game
         let situation = g.situation;
@@ -264,22 +252,26 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             if(command.restart) { // если запрошен рестарт статистики
                 console.log('запрошен рестарт');
                 restartStats();
-            }
+                }
             if(command.shuffle) { // если запрошено перемешать игроков
                 shuffleflag = command.shuffle;
                 console.log('перемешивать игроков = ' + shuffleflag.toString());
-            }
-        } else { 
+                }
+            } 
+        else { 
             verified = false;
-        }
-        
-    });
+            }
+        });
     
     ws.on('close', function() { // обработка закрытия сессии
         console.log('закрывается админская сессия');        
-    });
-
-    
+        });
+  
+    if ( ! verified ) {
+        ws.close(1008,'пароль неверный')
+        return;
+        }
+   
     // Посылать информацию об игре админу каждые updateinterval милисекунд
     setInterval(sendAdmin, parameters.updateinterval);
     
@@ -287,24 +279,14 @@ adminServer.on('connection', function(ws) { // запускается, когд�
         if(verified === false) { // отображать только авторизованным админам
             return;
             }
-        let f;
-        let bordercolor="";
-        let message = "";
+        let message = [];
         let s;
 
-        for(let key in players) { // по всем играющим клиентам
-            if (players[key] && opponents[key].players[0] == key) { // выводим только для первого игрока в паре
-                s = getStrategies(key); // вычислить профиль стратегий
-                    
-                // вычислить выигрыш, текущий игрок всегда считается первым
-                f = getPayoff(1, s);
-                console.log('Game '+JSON.stringify(opponents[key].players)+': '+JSON.stringify(s)); // записать стратегии в лог для статистики
-                message += '<div class="small_wrap">'
-                message += drawField(1, s); // нарисовать поле для текущего игрока
-                message +='</div>';
+        for( let g of groups ) { // по всем группам
+            s = [...g.situation]; // вычислить профиль стратегий
+            message.push([g.number,s,])
             }
-        }
-        hist = '<p><div id=hist><table width=300 height=300 style="border-collapse:collapse">';
+        let hist = '<p><div id=hist><table width=300 height=300 style="border-collapse:collapse">';
 
         for(let i = 0; i < rho.length; i++) {
             let row = rho[i];
@@ -360,11 +342,11 @@ function shufflePlayers() {
 }
 
 function shuffle(array) {
-  array.sort(() => Math.random() - 0.5);
-}
+    array.sort(() => Math.random() - 0.5);
+    }
 
 function Round(num,dig) {
     return Math.round( num * Math.pow(10,dig) + Number.EPSILON ) / Math.pow(10,dig);
-}
+    }
 
 console.log('Сервер запущен на портах ' +parameters.statsport+', '+parameters.port+', '+parameters.adminport);
