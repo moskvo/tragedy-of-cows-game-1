@@ -3,16 +3,28 @@ class TragedyOfCommons {
         this.players = Array.from({length: n}, (_, i) => i + 1);
         this.A = A;
         this.actions = new Map( this.players.map( p => [p, 0] ) );
+        this.payoffs = new Map( this.players.map( p => [p, 0] ) );
+        this.payoff_actual = false;
         }
     
     get n(){ return this.players.length; }
 
-    setAction(player, a) { this.actions.set(player,a); }
+    setAction(player, a) { 
+        this.actions.set(player,a); 
+        this.payoff_actual = false; 
+        }
 
     getPayoff(player){
+        if( ! this.payoff_actual )
+            this.calcPayoffs();
+        return this.payoffs.get(player);
+        }
+    calcPayoffs(){
         let sum = 0;
         this.actions.forEach( (v,k) => sum += v );
-        return this.actions.get(player) * (this.A - sum);
+        for( let p of this.players ){
+            this.payoffs.set(p, this.actions.get(p) * (this.A - sum) );
+            }
         }
     to_string(){
         return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions]}`;

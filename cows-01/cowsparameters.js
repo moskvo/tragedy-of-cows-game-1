@@ -11,14 +11,12 @@ module.exports.singleuser = false; // разрешать только одну �
 
 class Group {
     static count = 0;
-    constructor(technology_socket,players_ids,players_sockets) {
+    constructor(subgame,players_ids,players_sockets) {
         Group.count += 1;
         this.number = Group.count;
-        this.tech_socket = technology_socket;
-        //this.game = gameapi.new_game(players_ids.length);
+        this.game = subgame;
         this.players_ids = players_ids;
-        this.players = Array.from({length: players_ids.length}, (_, i) => i + 1);
-        this.ids_players_map = new Map(this.players.map( (e,i)=> [players_ids[i], e] ));
+        this.ids_players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
         this.situation = this.empty_situation();
         this.round = 0;
 
@@ -46,7 +44,6 @@ class Group {
         this.players_with_choices.push(player_id);
         if( this.players_with_choices.length == this.players_ids.length ) { 
             this.choices_done = true; 
-            this.tech_player.send( JSON.stringify([...this.game.actions]) );
             }
         }
     

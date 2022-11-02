@@ -7,7 +7,7 @@ let parameters = require("./cowsparameters");
 let WebSocketServer = new require('ws');
 
 const gameapi = {
-    new_game: () => new parameters.TheGame(parameters.n,parameters.fieldsize),
+    new_game: (n,A) => new parameters.TheGame(n,A),
     fields_ids: Array.from({length: parameters.fieldsize}, (_, i) => 'f'+(i+1)),
     };
 
@@ -91,8 +91,9 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
     clients.push(player_id); // добавить новую сессию в список игроков
     clients_sockets[player_id] = wws; // добавить ссылку на сокет в список игроков
     
-    if ( clients.length == parameters.n ) { // если набрался полный комплект участников 
-        let g = new Group(gameapi,clients,clients_sockets);
+    if ( clients.length == parameters.n ) { // если набрался полный комплект участников
+        let subgame = gameapi.new_game(parameters.n,parameters.fieldsize);
+        let g = new Group(subgame, clients, clients_sockets);
         g.choices_done = true; // для отправки начальной ситуации (0,0,0)
         groups.push(g);
         for ( let id of clients ) {
@@ -205,29 +206,8 @@ function random_index(items){
     return Math.floor(Math.random()*items.length);
     }
 
-// нарисовать поле для игрока player при стратегиях s
-function drawField(player, s) {
-    let message='<style> table {} .tbl-field {border-collapse: collapse; align:center;}</style><style> td {} .td-field {border: 1px solid green;} </style>';
-    message+='<table class=tbl-field>';
-    for (let i = 0; i < size; i++) {
-        message+='<tr>';
-        for (let j = 0; j < size; j++) {
-            message+='<td class=td-field width=50 height=50 bgcolor="green" background="grass.gif">';
-            if(i*size+j+1<=s.x) {
-                message+='<img width=50 src=cow1.gif alt="1">';
-            }
-            else if(size*size-(i*size+j+1)<s.y) {
-            message+='<img width=50 src=cow2.gif alt="2">';
-            }
-            message+='</td>';
-        }
-        message+='</tr>';
-    }
-    message+='</table>';
 
-    return message;
-}
-
+// ДЛЯ АДМИНА
 // обычный сервер (статика) на порту 8080
 //let fileServer = new Static.Server('.');
 //http.createServer(function (req, res) {
@@ -280,36 +260,21 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             return;
             }
         let message = [];
-        let s;
 
+        let plcnt = 0;
         for( let g of groups ) { // по всем группам
             s = [...g.situation]; // вычислить профиль стратегий
-            message.push([g.number,s,])
+            message.push([g.number,s])
+            plcnt += g.players_ids.length;
             }
-        let hist = '<p><div id=hist><table width=300 height=300 style="border-collapse:collapse">';
-
-        for(let i = 0; i < rho.length; i++) {
-            let row = rho[i];
-            hist+='<tr>';
-            for(let j = 0; j < row.length; j++) {
-                b = Math.min(255,Math.max(0,Math.floor((1-rho[i][j]/maxrho)*255))).toString(16); // brightness
-                if(i<j) {
-                    bordercolor='style="border: 0px;"';
-                } else if(Math.round(i-size*size/3)==0 && Math.round(j-size*size/3)==0) {
-                    bordercolor='style="border: 2px solid red;"';
-                } else if(Math.round(i+j-size*size/2)==0) {
-                    bordercolor='style="border: 2px solid green;"';
-                } else {
-                    bordercolor='style="border: 1px dotted silver;"';
-                }
-                hist+='<td bgcolor="#'+b+b+b+'" '+bordercolor+'></td>'; // draw the density colormap
-                } 
-            hist+='</tr>';
-        } 
-    hist+='</table></div></p>';
-    ws.send(hist+message); 
-    }
-}); // end admin websoket events definition
+        ws.send({
+            curstate: message,
+            playerscount: plcnt,
+            groupscount: groups.length,
+            waitingscount: clients.length
+            }); 
+        }
+    }); // end admin websoket events definition
 
 // функция сбрасывает статистику по всем сессиям
 function restartStats() {
