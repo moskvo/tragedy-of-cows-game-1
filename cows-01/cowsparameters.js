@@ -60,7 +60,7 @@ class Group {
         this.choices_done = false;
         this.players_with_choices = [];
         }
-    }
+    } // class Group
 
 function sock_on_message(group,id){
     return function(message) { // игроки присылают на сервер свои стратегии в сообщениях

@@ -260,6 +260,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             return;
             }
         let message = [];
+        let s;
 
         let plcnt = 0;
         for( let g of groups ) { // по всем группам
@@ -271,7 +272,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             curstate: message,
             playerscount: plcnt,
             groupscount: groups.length,
-            waitingscount: clients.length
+            waiterscount: clients.length
             }); 
         }
     }); // end admin websoket events definition

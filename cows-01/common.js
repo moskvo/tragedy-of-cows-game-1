@@ -46,17 +46,20 @@ class VideoGame {
         this.setSituation(situation);
         this.screen = gamescreen_element;
 
+        // create blind
+        // create info & button
+        // create choice-set
+        this.baseElements();
+
         // create cowcards and their place - 'choice sets'
         this.choice_set = this.screen.querySelector('div.choice-set');
         this.choice_sets = {};
         let cows_per_player = this.game.n == 3 ? 9 : 20
         //let cow_width = this.screen.style.getPropertyValue()
         this.cows_conf = new Map(); // conf of cowcards positions, changing by createChoiceSet
-        for( let p of this.players ){
-            let c = this.createChoiceSet(p, cows_per_player)
-            this.choice_set.appendChild( c )
-            this.choice_sets[p] = c
-            }
+        for( let p of this.players )
+            this.choice_sets[p] = this.choice_set.appendChild(
+                    this.createChoiceSet(p, cows_per_player) )
         // create fields
         if( game.n == 5 ){
             this.screen.style.setProperty('--columns-number', 6);
@@ -99,13 +102,16 @@ class VideoGame {
         
         this.cows = this.screen.querySelectorAll('.cow');        
         this.fields = this.screen.querySelectorAll('.game-field');
-        this.payoff_element = this.screen.querySelector('span[payoff]');
+
+        this.payoff_elements = 
+            this.players.map( p => 
+                this.screen.querySelector(`span[payoff-${p}]`) );
         this.blind = this.screen.querySelector('.blind');
         this.dragged = null;
         this.drawPayoff();
         }
 
-    setPlayer(player){
+    setPlayer(player){ // legacy - all cows will be of player!
         this.cows.forEach( (v,i) => {
             v.classList.replace('player-'+this.player,'player-'+player);
             });
@@ -116,46 +122,48 @@ class VideoGame {
         let c = this.situation.get(player);
         c.push(choice);
         this.game.setAction(player,c.length);
-        //this.payoff_element.textContent = this.getPayoff();
         }
     removeChoices(choices,player){
         let c = this.situation.get(player).filter(e=>(!choices.includes(e)));
         this.situation.set(player,c);
         this.game.setAction(player,c.length);
-        //this.payoff_element.textContent = this.getPayoff();
         }
         
     wipeCards(){
-        for( const [player,strategy] of this.situation ){
+        for( const [gamer,strategy] of this.situation ){
+            let move = this.players.includes(gamer);
             for( const f_id of strategy ){
                 let field = this.screen.querySelector('#'+f_id);
                 let cow = field.querySelector('img.cow');
                 this.upCard(cow,field);
-                if( this.players.includes(player) ){
-                    this.placeCard(cow,this.choice_sets[player]);
+                if( move ){
+                    this.placeCard(cow,this.choice_sets[gamer],gamer);
                     }
                 else {
                     cow.remove();
                     }
                 }
-            this.removeChoices(Array.from(strategy),this.player);
+            //this.removeChoices(Array.from(strategy),gamer);
             }
+        //this.drawPayoff();
         }    
     
     async drawCards(){
-        console.log('drawChoices');
-        for( const [player,strategy] of this.situation ){
+        this.wipeCards(); // to avoid multiple cards on some field
+        for( const [gamer,strategy] of this.situation ){
+            let move = this.players.includes(gamer);
             for( const id of strategy ){
                 let field = this.screen.querySelector('#'+id);
-                let card = (player == this.player) ? 
-                            this.giveLastCard(player) : this.createCard(player,false);
-                this.placeCard( card, field, player); //field.appendChild( this.createCard(player,draggable) );
+                let card = move ? 
+                            this.giveLastCard(gamer) : this.createCard(gamer,false);
+                this.placeCard( card, field, gamer); //field.appendChild( this.createCard(player,draggable) );
                 }
             }
         }
 
     async drawPayoff(){
-        this.payoff_element.textContent = this.getPayoff();
+        for( let p in this.players )
+            this.payoff_elements[p].textContent = this.getPayoff(this.players[p]);
         }
 
     giveLastCard(player){
@@ -186,17 +194,16 @@ class VideoGame {
         }
 
     createField(grass, id=null) {
-        var field = document.createElement("div");
+        var field = create_and_appendto("div",null,"game-field");
         if( grass == 'grass' )
-            field.classList.add('game-field', 'grass-field', 'droppable');
+            field.classList.add('grass-field', 'droppable');
         else
-            field.classList.add('game-field', 'ground-field');
+            field.classList.add('ground-field');
         if ( id ) field.id = id;
         return field;
         }
     createCard(player, draggable=true, id=null) {
-        var card = document.createElement("img");
-        card.classList.add('cow', 'player-'+player);
+        var card = create_and_appendto("img",null,'cow', 'player-'+player);
         card.setAttribute('src',"img/cow.png");
         card.setAttribute('draggable',draggable);
         card.setAttribute('player',player)
@@ -229,8 +236,7 @@ class VideoGame {
         }
     
     createChoiceSet(forplayer, cows_per_player=9){
-        let chset = document.createElement("div")
-        chset.classList.add('choice-set-'+forplayer, 'droppable')
+        let chset = createl("div",null,['choice-set-'+forplayer, 'droppable']);
         chset.style.width = (100/this.players.length)+'%';
         let cs = getComputedStyle(this.screen)
         let cowwidth = parseInt(cs.getPropertyValue('--game-width'))
@@ -294,4 +300,41 @@ class VideoGame {
         this.dragged = ev.target;
         }
 
+    baseElements(){
+        function payoff_str(p1,...pls){
+            if( !p1 && pls.length == 0 )
+                [p1,pls] = [1,[2,3]];
+            let s = `Прибыль игрока ${p1}:  <span payoff-${p1}>0</span>`
+            for( let p of pls)
+                s += `<br/>Прибыль игрока ${p}:  <span payoff-${p}>0</span>`
+            }
+        
+        this.screen.appendChild( 
+            createl('div', null, ["blind"],
+                createl('div', "<h2>Ожидание подключения еще</h2>", ["blind-text"])
+            ));
+        
+        this.screen.appendChild( 
+            createl('div', null, ["info"],
+                createl('div', payoff_str(...this.players), ["text-info"]),
+                createl('div',
+                        '<button id="send" class="btn danger">ОТПРАВИТЬ КОРОВ</button>',
+                        ["text-info"])
+            ));
+
+        this.screen.appendChild( createl('div', null, ["choice-set"]) );
+        for( let p of this.players )
+        this.choice_sets[p] = this.choice_set.appendChild(
+                this.createChoiceSet(p, cows_per_player) )
+
+        }
+
     } // class VideoGame
+
+function createl(tag,inhtml, cssclasses,...childs) {
+    let e = document.createElement(tag);
+    e.classList.add(...cssclasses)
+    if( inhtml ) e.innerHTML = inhtml
+    for( let c of childs ){ e.appendChild(c) }
+    return e
+    }
