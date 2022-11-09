@@ -129,7 +129,7 @@ class VideoGame {
         this.game.setAction(player,c.length);
         }
         
-    wipeCards(){
+    async wipeCards(){
         for( const [gamer,strategy] of this.situation ){
             let move = this.players.includes(gamer);
             for( const f_id of strategy ){
@@ -149,7 +149,7 @@ class VideoGame {
         }    
     
     async drawCards(){
-        this.wipeCards(); // to avoid multiple cards on some field
+        await this.wipeCards(); // to avoid multiple cards on some field
         for( const [gamer,strategy] of this.situation ){
             let move = this.players.includes(gamer);
             for( const id of strategy ){
@@ -186,11 +186,12 @@ class VideoGame {
         return this.game.getPayoff(this.player);
         }
             
-    async setSituation(situation) {
+    setSituation(situation) {
         this.situation = situation || new Map(this.game.players.map(p=>[p,[]])) ;
         for( const [p,v] of this.situation ){
             this.game.setAction(p,v.length);
             }
+        return this;
         }
 
     createField(grass, id=null) {
@@ -327,6 +328,13 @@ class VideoGame {
         this.choice_sets[p] = this.choice_set.appendChild(
                 this.createChoiceSet(p, cows_per_player) )
 
+        }
+    
+    static createGameElement(id){
+        let e = document.createElement("div");
+        e.id = 'game-' + id;
+        e.classList.add('cows-game')
+        return e;
         }
 
     } // class VideoGame

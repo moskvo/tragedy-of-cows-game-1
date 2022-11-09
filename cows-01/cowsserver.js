@@ -3,8 +3,9 @@
 //let http = require('http'); 
 //let Static = require('node-static');
 
-let parameters = require("./cowsparameters");
-let WebSocketServer = new require('ws');
+const parameters = require("./cowsparameters");
+const WebSocketServer = new require('ws');
+const EventEmitter = require('events');
 
 const gameapi = {
     new_game: (n,A) => new parameters.TheGame(n,A),
@@ -23,9 +24,12 @@ let payoffs = {};
 // перемешивать игроков каждый период
 let shuffleflag = false;
 
-let groups = [];
-let group_of_player = {};
+const groups = [];
+const group_of_player = {};
 const Group = parameters.Group;
+
+// сообщения для админа (-ов?)
+const events2admin = new EventEmitter();
 
 
 let clients = []; // переменная, которая хранит ID сессий при комплектовании игроками игры 
@@ -33,7 +37,7 @@ let clients_sockets = {} // переменная, которая хранит с
 // при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
 
 // старутем WebSocket-сервер на порту, определяемом параметрами в файле
-let webSocketServer = new WebSocketServer.Server({port: parameters.port});
+const webSocketServer = new WebSocketServer.Server({port: parameters.port});
 
 webSocketServer.on('connection', function(ws,req) { // запускается, когда новый клиент присоединяется к серверу
     let id = req.socket.remoteAddress; // ID новой сессии - ip !менял connection на socket
@@ -64,21 +68,28 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 
         } else { // при закрытии играющей сессии принудительно ставятся в очередь сессии и всех оппонентов
             console.log('гасим играющую сессию id=' +id);
+
+            // удаляем группу из списков групп
             let thegroup = group_of_player[id];
-            let ops = thegroup.players_ids; // получить список ID всех оппонентов
-            
-            // удаляем группу из списка групп
             let groupindex = groups.indexOf(thegroup);
             if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
             else{ groups.splice(groupindex,1); }
+            delete group_of_player[id];
             
-            for(let i in ops) { // сессии всех остальных оппонентов в таблицу ожидания
+            // сессии всех остальных оппонентов в таблицу ожидания
+            let ops = thegroup.players_ids; 
+            for(let i in ops) { 
                 if( ops[i] != id && players[ops[i]] != null) {
                     addSessionToWaitingList(ops[i], players[ops[i]]); // поместить оппонентов в ожидающие сессии
                     }
                 }
-            delete group_of_player[id];
+
             delete players[id]; // вычистить выбывшего игрока из массива играющих сессий
+
+            // сообщение админу
+            events2admin.emit('deletegroup', { 
+                deletegroup : {number: thegroup.number}
+                })
         }
     });
 
@@ -105,6 +116,13 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
             }
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
+        events2admin.emit('newgroup', {
+            newgroup: {
+                number : g.number,
+                fieldsize : g.game.A,
+                playerscount: g.players_ids.length 
+                }
+            })
         }
     }
 
@@ -130,11 +148,9 @@ function connectInfo() {
 function sendFields() {        
     groups.filter(g=>g.choices_done).forEach( g=>{
         // solve game
-        let situation = g.situation;
-        let round = g.round;
 
         // solve possible collisions
-        const [allocation_fields,offside] = solveCollisionsOnFields(gameapi.fields_ids,situation);
+        const [allocation_fields,offside] = solveCollisionsOnFields(gameapi.fields_ids,g.situation);
         let newsituation = g.empty_situation();
         for( let [f,pl] of allocation_fields ){
             newsituation.get(pl).push(f);
@@ -149,7 +165,7 @@ function sendFields() {
                 players[id].send(
                     JSON.stringify({
                         newround: true,
-                        round: round+1,
+                        round: g.round+1,
                         situation: [...newsituation], 
                         payoff: map_payoffs[i],
                         offside: offside
@@ -243,15 +259,23 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             }
         });
     
+    let fnsend = (msg) => ws.send(msg);
     ws.on('close', function() { // обработка закрытия сессии
-        console.log('закрывается админская сессия');        
+        console.log('закрывается админская сессия');
+        events2admin.removeListener('curstate',fnsend)
+                    .removeListener('newgroup',fnsend)
+                    .removeListener('deletegroup',fnsend);
         });
   
     if ( ! verified ) {
         ws.close(1008,'пароль неверный')
         return;
         }
-   
+
+    events2admin.on('curstate',fnsend)
+                .on('newgroup',fnsend)
+                .on('deletegroup',fnsend);
+
     // Посылать информацию об игре админу каждые updateinterval милисекунд
     setInterval(sendAdmin, parameters.updateinterval);
     
@@ -264,16 +288,18 @@ adminServer.on('connection', function(ws) { // запускается, когд�
 
         let plcnt = 0;
         for( let g of groups ) { // по всем группам
-            s = [...g.situation]; // вычислить профиль стратегий
-            message.push([g.number,s])
+            // номер группы, профиль стратегий, размер поля, раунд
+            message.push( [g.number, [...g.situation], g.game.A, g.round] )
             plcnt += g.players_ids.length;
             }
-        ws.send({
+
+        s = {
             curstate: message,
             playerscount: plcnt,
             groupscount: groups.length,
             waiterscount: clients.length
-            }); 
+            };
+        events2admin.emit('curstate', s);
         }
     }); // end admin websoket events definition
 

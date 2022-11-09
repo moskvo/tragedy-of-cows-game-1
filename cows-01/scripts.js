@@ -45,9 +45,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
             return;
             }
         if( incomingMessage.newround ) {
-            videogame.wipeCards();
             videogame.blind.style.visibility = 'hidden';
             videogame.setSituation(new Map(incomingMessage.situation));
+            //videogame.wipeCards();
             videogame.drawCards();
             videogame.drawPayoff();
             return;

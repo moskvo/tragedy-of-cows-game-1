@@ -49,46 +49,52 @@ document.addEventListener("DOMContentLoaded", function(event) {
         })
 
     socket = new WebSocket('ws://'+IP+':'+adminport);
+
     // обработчик входящих сообщений
     socket.onmessage = function(event) {
         var incomingMessage = event.data; 
         //console.log('received message '+incomingMessage);
         //showMessage(incomingMessage);
-        const {newgroup, curstate, playerscount, groupscount, waiterscount} = incomingMessage
+        const {deletegroup, newgroup, curstate, playerscount, groupscount, waiterscount} = incomingMessage
+        
         if( curstate ){
             document.getElementById("players").innerText = playerscount;
             document.getElementById("groups").innerText = groupscount;
             document.getElementById("waiters").innerText = waiterscount;
 
+            // group - [number, situation, fieldsize]
             for( let group of curstate ){
-                if( videogames.has(group[0]) ){
-                    let vg = videogames.get(group[0]);
-                    vg.setSituation(new Map(group[1]));
-                    vg.wipeCards()
-                    vg.drawCards()
+                if( ! videogames.has(group[0]) ){
+                    create_screen_and_game( group[0], group[1].length, group[2] )
                     }
-                else { console.log(`I don't know about game #${group[0]}`)}
+                videogames.get(group[0])
+                    .setSituation(new Map(group[1]))
+                    .drawCards();
                 }
             }
 
+        /*
+            newgroup: {
+                number, - id
+                fieldsize,
+                playerscount
+            }
+        */
         if ( newgroup ) {
             // create elements to show games
-            let f = document.createElement("div");
-            f.id = 'game-'+newgroup.number;
-            f.classList.add('cows-game')
-            document.getElementById('fields').appendChild(f)
-
-            let fieldsize = (n==3) ? 12 : 30;
-            let tgame = new TragedyOfCommons(n,fieldsize);
-            let opts = {
-                game:tgame,
-                player:[1,2],
-                gamescreen_element:f,
-                //situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
-                }
-            videogame = new VideoGame(opts);  
-            videogames.set(newgroup.number);
+            create_gamewithscreen( groupnumber, playerscount, fieldsize )
             }
+
+        /*
+            deletegroup: {
+                number, - id
+            }
+        */
+        if ( deletegroup ) {
+            document.getElementById('game-'+deletegroup.number).remove();
+            videogames.delete(deletegroup.number);
+            }
+
         };
 
     // обработчик обрыва сокета - реконнект
@@ -97,3 +103,20 @@ document.addEventListener("DOMContentLoaded", function(event) {
         location.reload(true);
         };
     })
+
+function create_screen_and_game( groupnumber, playerscount, fieldsize ){
+    // create elements to show games
+    let f = VideoGame.createGameElement(groupnumber);
+    document.getElementById('fields').appendChild(f);
+
+    let opts = {
+        game                : new TragedyOfCommons(playerscount,fieldsize),
+        player              : [1,2,3],
+        gamescreen_element  : f,
+        //situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
+        }
+
+    let g = new VideoGame(opts);
+    videogames.set(groupnumber,g);
+    return g;
+    }
