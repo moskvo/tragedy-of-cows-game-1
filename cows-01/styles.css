@@ -55,7 +55,7 @@ div.blind{
   display: flex;
 }
 .text-info {
-  display: flex;
+  display: block;
 }
 
 

@@ -57,9 +57,11 @@ class VideoGame {
         let cows_per_player = this.game.n == 3 ? 9 : 20
         //let cow_width = this.screen.style.getPropertyValue()
         this.cows_conf = new Map(); // conf of cowcards positions, changing by createChoiceSet
-        for( let p of this.players )
+        for( let p of this.players ) {
             this.choice_sets[p] = this.choice_set.appendChild(
-                    this.createChoiceSet(p, cows_per_player) )
+                    this.createChoiceSet(p, cows_per_player) 
+                    )
+            }
         // create fields
         if( game.n == 5 ){
             this.screen.style.setProperty('--columns-number', 6);
@@ -195,7 +197,7 @@ class VideoGame {
         }
 
     createField(grass, id=null) {
-        var field = create_and_appendto("div",null,"game-field");
+        var field = createl("div",null,["game-field"]);
         if( grass == 'grass' )
             field.classList.add('grass-field', 'droppable');
         else
@@ -204,7 +206,7 @@ class VideoGame {
         return field;
         }
     createCard(player, draggable=true, id=null) {
-        var card = create_and_appendto("img",null,'cow', 'player-'+player);
+        var card = createl("img",null,['cow', 'player-'+player]);
         card.setAttribute('src',"img/cow.png");
         card.setAttribute('draggable',draggable);
         card.setAttribute('player',player)
@@ -305,9 +307,10 @@ class VideoGame {
         function payoff_str(p1,...pls){
             if( !p1 && pls.length == 0 )
                 [p1,pls] = [1,[2,3]];
-            let s = `Прибыль игрока ${p1}:  <span payoff-${p1}>0</span>`
+            let s = `<p>Прибыль игрока ${p1}:  <span payoff-${p1}>0</span></p>`
             for( let p of pls)
-                s += `<br/>Прибыль игрока ${p}:  <span payoff-${p}>0</span>`
+                s += `<p>Прибыль игрока ${p}:  <span payoff-${p}>0</span></p>`
+            return s;
             }
         
         this.screen.appendChild( 
@@ -324,10 +327,6 @@ class VideoGame {
             ));
 
         this.screen.appendChild( createl('div', null, ["choice-set"]) );
-        for( let p of this.players )
-        this.choice_sets[p] = this.choice_set.appendChild(
-                this.createChoiceSet(p, cows_per_player) )
-
         }
     
     static createGameElement(id){
