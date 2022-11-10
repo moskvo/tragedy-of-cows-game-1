@@ -182,10 +182,10 @@ class VideoGame {
         }
 
 
-    getPayoff(){
+    getPayoff(gamer){
         console.log( this.game.to_string() );
         console.log( [...this.situation]);
-        return this.game.getPayoff(this.player);
+        return this.game.getPayoff(gamer);
         }
             
     setSituation(situation) {
