@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     let tgame = new TragedyOfCommons(n,fieldsize);
     let opts = {
         game:tgame,
-        player:[1,2],
+        player:1,
         gamescreen_element:document.querySelector('section.cows-game'),
         //situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
         }

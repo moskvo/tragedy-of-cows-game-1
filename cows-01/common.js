@@ -117,8 +117,9 @@ class VideoGame {
         this.cows.forEach( (v,i) => {
             v.classList.replace('player-'+this.player,'player-'+player);
             });
+        this.players = [player];
         this.player = player;
-        }
+    }
 
     addChoice(choice,player){
         let c = this.situation.get(player);
