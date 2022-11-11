@@ -3,12 +3,13 @@
 //let http = require('http'); 
 //let Static = require('node-static');
 
-const parameters = require("./cowsparameters");
-const WebSocketServer = new require('ws');
-const EventEmitter = require('events');
+import { parameters, Group } from "./cowsparameters.mjs";
+import { TragedyOfCommons } from "./common.mjs";
+import { WebSocketServer } from 'ws';
+import { EventEmitter } from 'events';
 
 const gameapi = {
-    new_game: (n,A) => new parameters.TheGame(n,A),
+    new_game: (n,A) => new TragedyOfCommons(n,A),
     fields_ids: Array.from({length: parameters.fieldsize}, (_, i) => 'f'+(i+1)),
     };
 
@@ -26,7 +27,6 @@ let shuffleflag = false;
 
 const groups = [];
 const group_of_player = {};
-const Group = parameters.Group;
 
 // сообщения для админа (-ов?)
 const events2admin = new EventEmitter();
@@ -37,7 +37,7 @@ let clients_sockets = {} // переменная, которая хранит с
 // при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется 
 
 // старутем WebSocket-сервер на порту, определяемом параметрами в файле
-const webSocketServer = new WebSocketServer.Server({port: parameters.port});
+const webSocketServer = new WebSocketServer({port: parameters.port});
 
 webSocketServer.on('connection', function(ws,req) { // запускается, когда новый клиент присоединяется к серверу
     let id = req.socket.remoteAddress; // ID новой сессии - ip !менял connection на socket
@@ -109,8 +109,12 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
         groups.push(g);
         for ( let id of clients ) {
             players[id] = clients_sockets[id]; // поместить игрока в таблицу 
-            players[id].send(JSON.stringify( 
-                {playertype: g.ids_players_map.get(id)} ));
+            players[id].send(JSON.stringify({
+                playertype: g.ids_players_map.get(id),
+                n : parameters.n,
+                fieldsize : parameters.fieldsize
+                } 
+                ));
             console.log('поместить в таблицу играющих ID='+id);
             group_of_player[id] = g;
             }
@@ -136,7 +140,7 @@ setInterval(sendFields, parameters.updateinterval);
 function connectInfo() {
     for(let soc in clients_sockets) { // по всем клиентам, ожидающим подключения
         if (clients_sockets[soc]!=undefined) {
-            let message={ showcontrols: false };
+            let message = { showcontrols: false };
             message.HTML ='<div class="blind-text"><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></div>';
             clients_sockets[soc].send(JSON.stringify(message));
             }
@@ -233,7 +237,7 @@ function random_index(items){
 //}).listen(8080);
 
 // старутем WebSocket-сервер на порту, определяемом параметрами в файле
-let adminServer = new WebSocketServer.Server({port: parameters.adminport});
+let adminServer = new WebSocketServer({port: parameters.adminport});
 
 adminServer.on('connection', function(ws) { // запускается, когда админ присоединяется к серверу
     console.log('новая админская сессия');

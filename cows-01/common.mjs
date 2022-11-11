@@ -46,10 +46,7 @@ class VideoGame {
         this.setSituation(situation);
         this.screen = gamescreen_element;
 
-        // create blind
-        // create info & button
-        // create choice-set
-        this.baseElements();
+        //VideoGame.baseElements(this.screen);
 
         // create cowcards and their place - 'choice sets'
         this.choice_set = this.screen.querySelector('div.choice-set');
@@ -105,9 +102,11 @@ class VideoGame {
         this.cows = this.screen.querySelectorAll('.cow');        
         this.fields = this.screen.querySelectorAll('.game-field');
 
+        this.payoff_div = this.screen.querySelector('div.pay')
+        this.payoff_div.innerHTML = payoff_str(...this.players)
         this.payoff_elements = 
             this.players.map( p => 
-                this.screen.querySelector(`span[payoff-${p}]`) );
+                this.payoff_div.querySelector(`span[payoff-${p}]`) );
         this.blind = this.screen.querySelector('.blind');
         this.dragged = null;
         this.drawPayoff();
@@ -116,9 +115,14 @@ class VideoGame {
     setPlayer(player){ // legacy - all cows will be of player!
         this.cows.forEach( (v,i) => {
             v.classList.replace('player-'+this.player,'player-'+player);
+            v.setAttribute('player',player)
             });
         this.players = [player];
         this.player = player;
+        this.payoff_div.innerHTML = payoff_str(...this.players);
+        this.payoff_elements = 
+            this.players.map( p => 
+                this.screen.querySelector(`span[payoff-${p}]`) );
     }
 
     addChoice(choice,player){
@@ -304,30 +308,24 @@ class VideoGame {
         this.dragged = ev.target;
         }
 
-    baseElements(){
-        function payoff_str(p1,...pls){
-            if( !p1 && pls.length == 0 )
-                [p1,pls] = [1,[2,3]];
-            let s = `<p>Прибыль игрока ${p1}:  <span payoff-${p1}>0</span></p>`
-            for( let p of pls)
-                s += `<p>Прибыль игрока ${p}:  <span payoff-${p}>0</span></p>`
-            return s;
-            }
-        
-        this.screen.appendChild( 
+    // create blind
+    // create info & button
+    // create choice-set
+    static baseElements(screen){        
+        screen.appendChild( 
             createl('div', null, ["blind"],
                 createl('div', "<h2>Ожидание подключения еще</h2>", ["blind-text"])
             ));
         
-        this.screen.appendChild( 
+        screen.appendChild( 
             createl('div', null, ["info"],
-                createl('div', payoff_str(...this.players), ["text-info"]),
+                createl('div', null, ["text-info", 'pay']),
                 createl('div',
                         '<button id="send" class="btn danger">ОТПРАВИТЬ КОРОВ</button>',
                         ["text-info"])
             ));
 
-        this.screen.appendChild( createl('div', null, ["choice-set"]) );
+        screen.appendChild( createl('div', null, ["choice-set"]) );
         }
     
     static createGameElement(id){
@@ -346,3 +344,15 @@ function createl(tag,inhtml, cssclasses,...childs) {
     for( let c of childs ){ e.appendChild(c) }
     return e
     }
+
+function payoff_str(p1,...pls){
+    if( !p1 && pls.length == 0 )
+        [p1,pls] = [1,[2,3]];
+    let s = `<p>Прибыль игрока ${p1}:  <span payoff-${p1}>0</span></p>`
+    for( let p of pls)
+        s += `<p>Прибыль игрока ${p}:  <span payoff-${p}>0</span></p>`
+    return s;
+    }
+
+
+export { TragedyOfCommons, VideoGame }

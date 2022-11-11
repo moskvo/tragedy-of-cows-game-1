@@ -1,0 +1,23 @@
+{
+  "name": "tragedy-of-cows-game-1",
+  "version": "1.0.0",
+  "description": "Description of ideas (in russian):\r https://zen.yandex.ru/media/id/623bf7753a607a279c05347c/623bf7e27915da7216856fa8",
+  "main": "cows-01/cowsserver.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moskvo/tragedy-of-cows-game-1.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/moskvo/tragedy-of-cows-game-1/issues"
+  },
+  "homepage": "https://github.com/moskvo/tragedy-of-cows-game-1#readme",
+  "dependencies": {
+    "ws": "^8.11.0"
+  }
+}

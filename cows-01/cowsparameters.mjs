@@ -1,15 +1,15 @@
-module.exports.n = 3; // число игроков
-module.exports.fieldsize = 12; // размер поля
+export const parameters = {
+    n : 3, // число игроков
+    fieldsize : 12, // размер поля
+    statsport : '8080', // порт, на котором открывается WebSocket
+    port : '8081', // порт, на котором открывается WebSocket
+    adminport : '8082', // порт, на котором открывается WebSocket для администрирования
+    updateinterval : 2000, // интервал обновления клиентов (в мс)
+    historydepth : 100, // глубина истории
+    singleuser : false // разрешать только одну сессию с одного IP  
+};
 
-module.exports.statsport = '8080'; // порт, на котором открывается WebSocket
-module.exports.port = '8081'; // порт, на котором открывается WebSocket
-module.exports.adminport = '8082'; // порт, на котором открывается WebSocket для администрирования
-module.exports.updateinterval = 2000; // интервал обновления клиентов (в мс)
-module.exports.historydepth = 100; // глубина истории
-
-module.exports.singleuser = false; // разрешать только одну сессию с одного IP  
-
-class Group {
+export class Group {
     static count = 0;
     constructor(subgame,players_ids,players_sockets) {
         Group.count += 1;
@@ -73,6 +73,3 @@ function sock_on_message(group,id){
             }
         };
     }
-
-
-module.exports.Group = Group;

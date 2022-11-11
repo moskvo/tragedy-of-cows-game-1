@@ -1,5 +1,8 @@
 ﻿'use strict';
 
+import { TragedyOfCommons, VideoGame } from "./common.mjs";
+
+
 if (!window.WebSocket) {
      document.body.innerHTML = 'WebSocket в этом браузере не поддерживается.';
     }
