@@ -112,7 +112,7 @@ class VideoGame {
         this.drawPayoff();
         }
 
-    setPlayer(player){ // legacy - all cows will be of player!
+    setPlayer(player){
         this.cows.forEach( (v,i) => {
             v.classList.replace('player-'+this.player,'player-'+player);
             v.setAttribute('player',player)
@@ -137,18 +137,18 @@ class VideoGame {
         }
         
     async wipeCards(){
-        for( const [gamer,strategy] of this.situation ){
-            let move = this.players.includes(gamer);
-            for( const f_id of strategy ){
-                let field = this.screen.querySelector('#'+f_id);
-                let cow = field.querySelector('img.cow');
-                this.upCard(cow,field);
-                if( move ){
-                    this.placeCard(cow,this.choice_sets[gamer],gamer);
-                    }
-                else {
-                    cow.remove();
-                    }
+        for( const field of this.fields ){
+            let cow = field.querySelector('img.cow');
+            if( !cow ) 
+                continue;
+            const gamer = parseInt(cow.getAttribute('player'));
+            const move = this.players.includes(gamer);
+            this.upCard(cow,field);
+            if( move ){
+                this.placeCard(cow,this.choice_sets[gamer],gamer);
+                }
+            else {
+                cow.remove();
                 }
             //this.removeChoices(Array.from(strategy),gamer);
             }
@@ -220,6 +220,7 @@ class VideoGame {
         }
     
     placeCard(card,newplace,player) {
+        console.log( `placeCard: ${card.id}, ${newplace.id}, ${player}` )
         if( newplace.classList.contains('choice-set-'+player) ){
             card.style.left = this.cows_conf.get(card.id).left;
             card.removeAttribute('graze');

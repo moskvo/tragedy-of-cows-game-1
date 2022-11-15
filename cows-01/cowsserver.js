@@ -80,6 +80,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
             let ops = thegroup.players_ids; 
             for(let i in ops) { 
                 if( ops[i] != id && players[ops[i]] != null) {
+                    players[ops[i]].send(JSON.stringify({ deletegame: true }));
                     addSessionToWaitingList(ops[i], players[ops[i]]); // поместить оппонентов в ожидающие сессии
                     }
                 }
@@ -110,6 +111,7 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
         for ( let id of clients ) {
             players[id] = clients_sockets[id]; // поместить игрока в таблицу 
             players[id].send(JSON.stringify({
+                newgame: true,
                 playertype: g.ids_players_map.get(id),
                 n : parameters.n,
                 fieldsize : parameters.fieldsize
