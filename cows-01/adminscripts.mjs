@@ -1,6 +1,7 @@
 ﻿'use strict';
 
 import { TragedyOfCommons, VideoGame } from "./common.mjs";
+import { parameters } from "./cowsparameters.mjs";
 
 
 if (!window.WebSocket) {
@@ -25,7 +26,10 @@ function restart() {
     }
 // перемешать игроков
 function shuffle() {  
-    var outgoingMessage = JSON.stringify({password: document.getElementById('adminPassword').value, shuffle: document.getElementById('shuffle').checked});
+    var outgoingMessage = JSON.stringify({
+        password: document.getElementById('adminPassword').value, 
+        shuffle: document.getElementById('shuffle').checked
+    });
     socket.send(outgoingMessage);
     return false;
     }
@@ -39,8 +43,9 @@ let groups_ids = [];
 let videogames = new Map();
 
 document.addEventListener("DOMContentLoaded", function(event) {
+    document.getElementById("players_count").setAttribute('value', parameters.players_count)
     document.querySelectorAll('div.cows-game').forEach( cows_game => {
-        let fieldsize = (n==3) ? 12 : 30;
+        let fieldsize = (parameters.n==3) ? 12 : 30;
         let tgame = new TragedyOfCommons(n,fieldsize);
         let opts = {
             game:tgame,
@@ -50,22 +55,21 @@ document.addEventListener("DOMContentLoaded", function(event) {
             }
         videogame = new VideoGame(opts);  
         })
-
-    socket = new WebSocket('ws://'+IP+':'+adminport);
+    
+    socket = new WebSocket('ws://'+parameters.IP+':'+parameters.adminport);
 
     // обработчик входящих сообщений
     socket.onmessage = function(event) {
-        var incomingMessage = event.data; 
-        //console.log('received message '+incomingMessage);
+        var incomingMessage = JSON.parse(event.data);
+        console.log('received message '+incomingMessage);
         //showMessage(incomingMessage);
         const {deletegroup, newgroup, curstate, playerscount, groupscount, waiterscount} = incomingMessage
-        
         if( curstate ){
             document.getElementById("players").innerText = playerscount;
             document.getElementById("groups").innerText = groupscount;
             document.getElementById("waiters").innerText = waiterscount;
 
-            // group - [number, situation, fieldsize]
+            // group - [number, situation, fieldsize, round]
             for( let group of curstate ){
                 if( ! videogames.has(group[0]) ){
                     create_screen_and_game( group[0], group[1].length, group[2] )
@@ -85,7 +89,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         */
         if ( newgroup ) {
             // create elements to show games
-            create_gamewithscreen( groupnumber, playerscount, fieldsize )
+            create_screen_and_game( newgroup.number, newgroup.playerscount, newgroup.fieldsize )
             }
 
         /*
@@ -103,18 +107,19 @@ document.addEventListener("DOMContentLoaded", function(event) {
     // обработчик обрыва сокета - реконнект
     socket.onclose = function(event) {
         // перезагрузить страницу при обрыве связи
-        location.reload(true);
+        //location.reload(true);
         };
     })
 
 function create_screen_and_game( groupnumber, playerscount, fieldsize ){
     // create elements to show games
     let f = VideoGame.createGameElement(groupnumber);
+    VideoGame.createBaseElements(f);   
     document.getElementById('fields').appendChild(f);
 
     let opts = {
         game                : new TragedyOfCommons(playerscount,fieldsize),
-        player              : [1,2,3],
+        player              : Array.from({length:playerscount},(_,i)=>i+1),
         gamescreen_element  : f,
         //situation: new Map([ [1,[]], [2,['f2','f3']], [3,['f4','f5','f6']] ])
         }
@@ -123,3 +128,5 @@ function create_screen_and_game( groupnumber, playerscount, fieldsize ){
     videogames.set(groupnumber,g);
     return g;
     }
+
+document.admin_env = { connect, restart, shuffle, videogames }

@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/moskvo/tragedy-of-cows-game-1#readme",
   "dependencies": {
+    "diophantine": "^1.1.0",
     "ws": "^8.11.0"
   }
 }

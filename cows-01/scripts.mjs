@@ -1,6 +1,7 @@
 'use strict';
 
 import { TragedyOfCommons, VideoGame } from "./common.mjs";
+import { parameters } from "./cowsparameters.mjs";
 
 if (!window.WebSocket) {
 	document.body.innerHTML = 'WebSocket в этом браузере не поддерживается.';
@@ -19,10 +20,10 @@ let blind;
 document.addEventListener("DOMContentLoaded", function(event) {    
 
     game_section = document.querySelector('section.cows-game') // just screen element
-    VideoGame.baseElements(game_section);
+    VideoGame.createBaseElements(game_section);
     blind = game_section.querySelector('.blind');
 
-    socket = new WebSocket('ws://'+IP+':'+port);
+    socket = new WebSocket(`ws://${parameters.IP}:${parameters.port}`);
     socket.onopen = (e) => console.log("[open] Соединение установлено")
 
     // обработчик входящих сообщений
