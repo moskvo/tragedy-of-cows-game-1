@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         // перезагрузить страницу при обрыве связи
         console.log('socket close, event:'+JSON.stringify(event));
         // uncomment in production
-        //location.reload(true); 
+        location.reload(true); 
         };
     
     });

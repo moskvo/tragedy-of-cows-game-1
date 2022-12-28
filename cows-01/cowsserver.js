@@ -1,7 +1,18 @@
 ﻿'use strict';
 
-//let http = require('http'); 
-//let Static = require('node-static');
+import express from 'express';
+const app = express();
+
+app.use(express.static('./cows-01'));
+
+{
+    const host = 'localhost';
+    const port = 8080;
+    app.listen(port, host, function () {
+        console.log(`Web server listens http://${host}:${port}`);
+    });
+}
+
 
 import { parameters } from "./cowsparameters.mjs";
 import { TragedyOfCommons, Group } from "./common.mjs";
@@ -236,13 +247,6 @@ function random_index(items){
 
 
 // ДЛЯ АДМИНА
-// обычный сервер (статика) на порту 8080
-//let fileServer = new Static.Server('.');
-//http.createServer(function (req, res) {
-//  
-//  fileServer.serve(req, res);
-//
-//}).listen(8080);
 
 // старутем WebSocket-сервер на порту, определяемом параметрами в файле
 let adminServer = new WebSocketServer({port: parameters.adminport});
@@ -388,7 +392,7 @@ function set_groups_sizes (n) { groups_sizes = grouping( n ) }
 set_groups_sizes( parameters.players_count )
 
 
-console.log('Сервер запущен на портах ' +parameters.statsport+', '+parameters.port+', '+parameters.adminport);
+console.log('WebSocket Сервер запущен на портах ' +parameters.statsport+', '+parameters.port+', '+parameters.adminport);
 
 function dateForFilename(date){
     // toISOString return: 2011-10-05T14:48:00.000Z

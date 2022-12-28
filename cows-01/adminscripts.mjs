@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     // обработчик обрыва сокета - реконнект
     socket.onclose = function(event) {
         // перезагрузить страницу при обрыве связи
-        //location.reload(true);
+        location.reload(true);
         };
     })
 
