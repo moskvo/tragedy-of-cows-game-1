@@ -1,20 +1,21 @@
 ﻿'use strict';
 
+import { parameters } from "./cowsparameters.mjs";
+
 import express from 'express';
 const app = express();
 
 app.use(express.static('./cows-01'));
 
 {
-    const host = 'localhost';
-    const port = 8080;
+    const host = parameters.IP;
+    const port = parameters.statsport;
     app.listen(port, host, function () {
         console.log(`Web server listens http://${host}:${port}`);
     });
 }
 
 
-import { parameters } from "./cowsparameters.mjs";
 import { TragedyOfCommons, Group } from "./common.mjs";
 import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
