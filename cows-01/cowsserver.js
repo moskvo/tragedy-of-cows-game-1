@@ -1,11 +1,13 @@
 ﻿'use strict';
 
+const _moscowdate = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'long', timeZone: 'Europe/Moscow', hour12: false });
+
 import { parameters } from "./cowsparameters.mjs";
 
 import express from 'express';
 const app = express();
 
-app.use(express.static('./cows-01'));
+app.use(express.static('.'));
 
 {
     const host = parameters.IP;
@@ -68,13 +70,13 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         //ws.close();
         return false;
         }
-    console.log("новая сессия, ID = "+id);
+    console.log("новая сессия, ID = " + id + " at " + _moscowdate.format(+new Date()) );
 
     addSessionToWaitingList(id, ws);
        
     ws.on('close', function() { // обработка закрытия сессии
         if (clients_sockets[id] != null) { // если сессия закрылась на этапе ожидания
-            console.log('гасим ожидающую сессию id=' +id);
+            console.log('гасим ожидающую сессию id=' +id  + " at " + _moscowdate.format(+new Date()));
             delete clients_sockets[id]; // вычистить клиента из массива ожидающих сессий            
             let index = clients.indexOf(id);
             if (index > -1) {
@@ -82,7 +84,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
             }// вычистить из списка оппонентов
 
         } else { // при закрытии играющей сессии принудительно ставятся в очередь сессии и всех оппонентов
-            console.log('гасим играющую сессию id=' +id);
+            console.log('гасим играющую сессию id=' +id  + " at " + _moscowdate.format(+new Date()));
 
             // удаляем группу из списков групп
             let thegroup = group_of_player[id];
