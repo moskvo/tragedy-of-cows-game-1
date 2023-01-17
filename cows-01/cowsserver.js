@@ -75,7 +75,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
     addSessionToWaitingList(id, ws);
        
     ws.on('close', function() { // обработка закрытия сессии
-        if (clients_sockets[id] != null) { // если сессия закрылась на этапе ожидания
+        if ( clients_sockets[id] ) { // если сессия закрылась на этапе ожидания
             console.log('гасим ожидающую сессию id=' +id  + " at " + _moscowdate.format(+new Date()));
             delete clients_sockets[id]; // вычистить клиента из массива ожидающих сессий            
             let index = clients.indexOf(id);
@@ -113,10 +113,39 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 
 }); // end websoket events definition
 
-function addSessionToWaitingList(player_id, wws) { // инлайновая функция
-    players_sockets[player_id] = undefined; // вычистить (на всякий случай) из массива играющих сессий
-    group_of_player[player_id] = undefined;
+// in it?:
+//      diophant
+//      clients?
+class GroupWork {
+    create
+    delete
 
+}
+
+function delete_group( group ){
+    let groupindex = groups.indexOf(group);
+    if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
+    else{ groups.splice(groupindex,1); }
+    
+    // сессии всех остальных оппонентов в таблицу ожидания
+    let ops = group.players_ids; 
+    for(let i in ops) { 
+        if( ops[i] != id && players_sockets[ops[i]] != null) {
+            delete group_of_player[id];
+            players_sockets[ops[i]].send(JSON.stringify({ deletegame: true }));
+            addSessionToWaitingList(ops[i], players_sockets[ops[i]]); // поместить оппонентов в ожидающие сессии
+            }
+        }
+
+    delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
+
+    // сообщение админу
+    events2admin.emit('deletegroup', { 
+        deletegroup : {number: group.number}
+        })
+    }
+
+function addSessionToWaitingList(player_id, wws) { // инлайновая функция
     clients.push(player_id); // добавить новую сессию в список игроков
     clients_sockets[player_id] = wws; // добавить ссылку на сокет в список игроков
     
@@ -271,6 +300,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             if(command.shuffle) { // если запрошено перемешать игроков
                 shuffleflag = command.shuffle;
                 console.log('перемешивать игроков = ' + shuffleflag.toString());
+                // перемешивание
                 }
             // если отправлено новое число игроков
             if(command.players_count ) {
@@ -343,19 +373,13 @@ function clearHistory(id) {
 
 function shufflePlayers() {
     let allparties = Object.keys(players_sockets); // копия номеров сессий в виде массива строк!
-    let parties = allparties.filter(x => !clients.includes(x) ); // оставить только играющие сессии 
-    let newopponents={}; // новая таблица оппонентов 
+    let gaming_parties = allparties.filter(x => !clients.includes(x) ); // оставить только играющие сессии 
     console.log('Перемешиваем!');
-    console.log(JSON.stringify(opponents));
     console.log(JSON.stringify(allparties));
-    shuffle(parties); // перемешать клиентские сессии
-    for(let i=0;i<parties.length; i+=parameters.n) { // перечислить все новые комплекты игроков
-        ops = parties.slice(i, i+parameters.n);
-        for(let j=0;j<ops.length; j++) {
-            newopponents[ops[j]]={players:ops};
-        }
+    shuffle(gaming_parties); // перемешать клиентские сессии
+    for( let i = 0 ; i < gaming_parties.length ; i += parameters.n ) { // перечислить все новые комплекты игроков
+        ops = gaming_parties.slice(i, i+parameters.n);
     }
-    opponents = newopponents;
 }
 
 function shuffle(array) {
@@ -366,7 +390,7 @@ function Round(num,dig) {
     return Math.round( num * Math.pow(10,dig) + Number.EPSILON ) / Math.pow(10,dig);
     }
 
-// grouping by groupsize 3 or 5
+// grouping n players by groupsize 3 or 5
 //   n must be >=3 and not 4 or 7
 const g1 = 3;
 const g2 = 5;
