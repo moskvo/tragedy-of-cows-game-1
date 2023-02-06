@@ -46,7 +46,7 @@ const groups = [];
 const group_of_player = {};
 
 // сообщения для админа (-ов?)
-const events2admin = new EventEmitter();
+const events_emitter = new EventEmitter();
 
 
 let clients = []; // переменная, которая хранит ID сессий при комплектовании игроками игры 
@@ -105,7 +105,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
             delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
 
             // сообщение админу
-            events2admin.emit('deletegroup', { 
+            events_emitter.emit('deletegroup', { 
                 deletegroup : {number: thegroup.number}
                 })
         }
@@ -117,7 +117,37 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 //      diophant
 //      clients?
 class GroupWork {
-    create
+    create_group() {
+        let sz = pop_group_size(parameters.n)
+        let subgame = gameapi.new_game(sz,parameters.fieldsize[sz]);
+        let g = new Group(subgame, clients, clients_sockets);
+        g.choices_done = true; // для отправки начальной ситуации (0,0,0)
+        groups.push(g);
+        for ( let id of clients ) {
+            players_sockets[id] = clients_sockets[id]; // поместить игрока в таблицу 
+            players_sockets[id].send(JSON.stringify({
+                newgame     : true,
+                playertype  : g.ids_players_map.get(id),
+                n           : subgame.players.length,
+                fieldsize   : subgame.A
+                } 
+                ));
+            console.log('поместить в таблицу играющих ID='+id);
+            group_of_player[id] = g;
+            }
+        history[g.number] = {0: g.situation};
+        clients = []; // готов формировать новый комплекс игроков
+        clients_sockets = {};
+        events_emitter.emit('newgroup', {
+            newgroup: {
+                number : g.number,
+                fieldsize : subgame.A,
+                playerscount: subgame.players.length 
+                }
+            })
+        }
+
+
     delete
 
 }
@@ -125,7 +155,7 @@ class GroupWork {
 function delete_group( group ){
     let groupindex = groups.indexOf(group);
     if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
-    else{ groups.splice(groupindex,1); }
+    else { groups.splice(groupindex,1); }
     
     // сессии всех остальных оппонентов в таблицу ожидания
     let ops = group.players_ids; 
@@ -140,7 +170,7 @@ function delete_group( group ){
     delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
 
     // сообщение админу
-    events2admin.emit('deletegroup', { 
+    events_emitter.emit('deletegroup', { 
         deletegroup : {number: group.number}
         })
     }
@@ -170,7 +200,7 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
         history[g.number] = {0: g.situation};
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
-        events2admin.emit('newgroup', {
+        events_emitter.emit('newgroup', {
             newgroup: {
                 number : g.number,
                 fieldsize : subgame.A,
@@ -315,7 +345,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
     let fnsend = (msg) => ws.send(JSON.stringify(msg));
     ws.on('close', function(err) { // обработка закрытия сессии
         console.log('закрывается админская сессия ' + err);
-        events2admin.removeListener('curstate',fnsend)
+        events_emitter.removeListener('curstate',fnsend)
                     .removeListener('newgroup',fnsend)
                     .removeListener('deletegroup',fnsend);
         });
@@ -325,7 +355,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
         return;
         }*/
 
-    events2admin.on('curstate',fnsend)
+    events_emitter.on('curstate',fnsend)
                 .on('newgroup',fnsend)
                 .on('deletegroup',fnsend);
 
@@ -352,7 +382,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
             groupscount: groups.length,
             waiterscount: clients.length
             };
-        events2admin.emit('curstate', s);
+        events_emitter.emit('curstate', s);
         }
     }); // end admin websoket events definition
 
