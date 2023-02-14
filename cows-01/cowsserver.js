@@ -117,14 +117,19 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 //      diophant
 //      clients?
 class GroupWork {
-    create_group() {
-        let sz = pop_group_size(parameters.n)
+    constructor(){
+        this.groups = [];
+        this.group_of_player = {};
+        }
+
+    create_group(gclients, gclients_sockets) {
+        let sz = gclients.length; //pop_group_size(parameters.n)
         let subgame = gameapi.new_game(sz,parameters.fieldsize[sz]);
-        let g = new Group(subgame, clients, clients_sockets);
+        let g = new Group(subgame, gclients, gclients_sockets);
         g.choices_done = true; // для отправки начальной ситуации (0,0,0)
-        groups.push(g);
-        for ( let id of clients ) {
-            players_sockets[id] = clients_sockets[id]; // поместить игрока в таблицу 
+        this.groups.push(g);
+        for ( let id of gclients ) {
+            players_sockets[id] = gclients_sockets[id]; // поместить игрока в таблицу 
             players_sockets[id].send(JSON.stringify({
                 newgame     : true,
                 playertype  : g.ids_players_map.get(id),
@@ -133,38 +138,44 @@ class GroupWork {
                 } 
                 ));
             console.log('поместить в таблицу играющих ID='+id);
-            group_of_player[id] = g;
+            this.group_of_player[id] = g;
             }
-
+        return g;
         }
 
+    //delete
+    delete_group( group ){
+        let groupindex = groups.indexOf(group);
+        if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
+        else { this.groups.splice(groupindex,1); }
+        
+        // сессии всех остальных оппонентов в таблицу ожидания
+        let ops = group.players_ids;
+        let ids = [], wsocks = {};
+        for(let i in ops) { 
+            if( ops[i] != id && players_sockets[ops[i]] != null) {
+                delete this.group_of_player[id];
+                players_sockets[ops[i]].send(JSON.stringify({ deletegame: true }));
+                ids.push(ops[i]);
+                wsocks[ops[i]] = players_sockets[ops[i]];
+                //addSessionToWaitingList(ops[i], players_sockets[ops[i]]); // поместить оппонентов в ожидающие сессии
+                }
+            }
+    
+        delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
+        return [ ids, wsocks ];
+        }
+    }
 
-    delete
+function delete_group() {
+
+        // сообщение админу
+        events_emitter.emit('deletegroup', { 
+            deletegroup : {number: group.number}
+            })
+        }
 
 }
-
-function delete_group( group ){
-    let groupindex = groups.indexOf(group);
-    if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
-    else { groups.splice(groupindex,1); }
-    
-    // сессии всех остальных оппонентов в таблицу ожидания
-    let ops = group.players_ids; 
-    for(let i in ops) { 
-        if( ops[i] != id && players_sockets[ops[i]] != null) {
-            delete group_of_player[id];
-            players_sockets[ops[i]].send(JSON.stringify({ deletegame: true }));
-            addSessionToWaitingList(ops[i], players_sockets[ops[i]]); // поместить оппонентов в ожидающие сессии
-            }
-        }
-
-    delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
-
-    // сообщение админу
-    events_emitter.emit('deletegroup', { 
-        deletegroup : {number: group.number}
-        })
-    }
 
 function shuffle_groups( groups ){
     let all_players_ids = []
@@ -197,23 +208,8 @@ function addSessionToWaitingList(player_id, wws) { // инлайновая фу�
     clients_sockets[player_id] = wws; // добавить ссылку на сокет в список игроков
     
     if ( clients.length == get_group_size(parameters.n) ) { // если набрался полный комплект участников
-        let sz = pop_group_size(parameters.n)
-        let subgame = gameapi.new_game(sz,parameters.fieldsize[sz]);
-        let g = new Group(subgame, clients, clients_sockets);
-        g.choices_done = true; // для отправки начальной ситуации (0,0,0)
-        groups.push(g);
-        for ( let id of clients ) {
-            players_sockets[id] = clients_sockets[id]; // поместить игрока в таблицу 
-            players_sockets[id].send(JSON.stringify({
-                newgame     : true,
-                playertype  : g.ids_players_map.get(id),
-                n           : subgame.players.length,
-                fieldsize   : subgame.A
-                } 
-                ));
-            console.log('поместить в таблицу играющих ID='+id);
-            group_of_player[id] = g;
-            }
+        pop_group_size(parameters.n);
+        let g = create_group(clients, clients_sockets);
         history[g.number] = {0: g.situation};
         clients = []; // готов формировать новый комплекс игроков
         clients_sockets = {};
