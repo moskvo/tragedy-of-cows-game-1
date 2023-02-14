@@ -135,16 +135,7 @@ class GroupWork {
             console.log('поместить в таблицу играющих ID='+id);
             group_of_player[id] = g;
             }
-        history[g.number] = {0: g.situation};
-        clients = []; // готов формировать новый комплекс игроков
-        clients_sockets = {};
-        events_emitter.emit('newgroup', {
-            newgroup: {
-                number : g.number,
-                fieldsize : subgame.A,
-                playerscount: subgame.players.length 
-                }
-            })
+
         }
 
 
@@ -174,6 +165,32 @@ function delete_group( group ){
         deletegroup : {number: group.number}
         })
     }
+
+function shuffle_groups( groups ){
+    let all_players_ids = []
+    for ( let g in groups ){
+        all_players_ids.push(...g.players_ids);
+    }
+
+    shuffle(all_players_ids);
+
+    // grouping
+
+    // поставить ожидающих на паузу
+    clients_wait = [...clients];
+    clients_sockets_wait = [...clients_sockets];
+    [clients, clients_sockets] = [ [], [] ]
+
+    for( let pid in all_players_ids ){
+        addSessionToWaitingList(pid,players_sockets[pid])
+    }
+
+    // вернуть ожидающих на ожидание
+    clients = clients_wait;
+    clients_sockets = clients_sockets_wait;
+}
+
+
 
 function addSessionToWaitingList(player_id, wws) { // инлайновая функция
     clients.push(player_id); // добавить новую сессию в список игроков
@@ -398,17 +415,6 @@ function clearHistory(id) {
     if( history[id] ){
         history['id'+Math.random().toString()] = history[id]
         history[id] = undefined
-    }
-}
-
-function shufflePlayers() {
-    let allparties = Object.keys(players_sockets); // копия номеров сессий в виде массива строк!
-    let gaming_parties = allparties.filter(x => !clients.includes(x) ); // оставить только играющие сессии 
-    console.log('Перемешиваем!');
-    console.log(JSON.stringify(allparties));
-    shuffle(gaming_parties); // перемешать клиентские сессии
-    for( let i = 0 ; i < gaming_parties.length ; i += parameters.n ) { // перечислить все новые комплекты игроков
-        ops = gaming_parties.slice(i, i+parameters.n);
     }
 }
 
