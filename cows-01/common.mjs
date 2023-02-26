@@ -1,24 +1,54 @@
+function get_row_by_value(table, ids, field, value) {
+    let i = 0;
+    while ( i < ids.length ) {
+        if( table[ids[i]][field] == value ){
+            break;
+            }
+        i++
+        }
+    return table[ids[i]];
+    }
+
 class TragedyOfCommons {
-    constructor(n,A) {
+    constructor(datatable, clients_ids, A) {
+        this.clients_ids = clients_ids;
+        let n = clients_ids.length, dt = datatable
         this.players = Array.from({length: n}, (_, i) => i + 1);
-        this.A = A;
-        this.actions = new Map( this.players.map( p => [p, 0] ) );
-        this.payoffs = new Map( this.players.map( p => [p, 0] ) );
+        let zip = clients_ids.map( (el,i) => [el, this.players[i]] )
+        for( let [id,pl] of zip ) {
+            dt[id].player = pl
+            dt[id].A = A
+            dt[id].action = 0
+            dt[id].payoff = 0
+            dt[id].game = this
+            }
         this.payoff_actual = false;
         }
     
     get n(){ return this.players.length; }
 
-    setAction(player, a) { 
+    setAction(dt, player, a) {
+        for ( let id of this.clients_ids ) {
+            if( dt[id].player == player ){
+                dt[id].action = a;
+                break;
+                }
+            }
         this.actions.set(player,a); 
         this.payoff_actual = false; 
         }
 
-    getPayoff(player){
+    getPayoff(dt, player){
         if( ! this.payoff_actual )
             this.calcPayoffs();
+        let i = 0
+        do {
+            if(  )
+        }
+        while( i < this.clients_ids.length )
         return this.payoffs.get(player);
         }
+
     calcPayoffs(){
         let sum = 0;
         this.actions.forEach( (v,k) => sum += v );
@@ -30,6 +60,51 @@ class TragedyOfCommons {
         return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions]}`;
         }
     }
+
+class Group {
+    static count = 0;
+    constructor(datatable, clients_ids) {
+        let dt = datatable    
+        Group.count += 1;
+        this.number = Group.count;
+        this.clients_ids = clients_ids;
+        for( let id of clients_ids ) {
+            dt[id].groupnum = this.number
+            dt[id].groupcls = this
+            dt[id].round = 0
+            // Обработчики событий
+            dt[id].player_socket.on('message', sock_on_message(this,id))
+            }
+        this.choices_done = false;
+        this.players_with_choices = [];
+        }
+
+    empty_situation() {
+        return new Map(this.game.players.map( el => [el,[]]) );
+        }
+
+    fixChoice(dt, player_id, a) {
+        if( ! this.clients_ids.includes(player_id) )
+            { return false; }
+        dt[player_id].choice = a;
+        this.players_with_choices.push(player_id);
+        if( this.players_with_choices.length == this.clients_ids.length ) {
+            this.choices_done = true;
+            }
+        }
+
+    get_situation(dt) {
+        this.clients_ids.map(id => dt[id].choice)
+        }     
+
+    next_round(dt){
+        this.choices_done = false;
+        this.players_with_choices = [];
+        for ( let id of this.clients_ids ){
+            dt[id].round += 1;
+            }
+        }
+    } // class Group
 
 class VideoGame {
     constructor({game, player, gamescreen_element, situation}){
@@ -355,60 +430,6 @@ function payoff_str(p1,...pls){
     return s;
     }
 
-
-class Group {
-    static count = 0;
-    constructor(subgame,players_ids,players_sockets) {
-        Group.count += 1;
-        this.number = Group.count;
-        this.game = subgame;
-        this.players_ids = players_ids;
-        this.ids_players_map = new Map(this.game.players.map( (e,i)=> [players_ids[i], e] ));
-        this.situation = this.empty_situation();
-        this.round = 0;
-
-        this.choices_done = false;
-        this.players_with_choices = [];
-
-        // Обработчики событий 
-        for( let id of players_ids ){
-            players_sockets[id].on('message', sock_on_message(this,id))
-            }
-        }
-    
-    empty_situation() {
-        return new Map(this.game.players.map( el => [el,[]]) );
-        }
-
-    fixChoice(player_id, a) {
-        if( ! this.ids_players_map.has(player_id) )
-            { return false; }
-        let current_player = this.ids_players_map.get(player_id);
-        this.situation.set(current_player,a);
-
-        this.game.setAction(current_player,a.length);
-        
-        this.players_with_choices.push(player_id);
-        if( this.players_with_choices.length == this.players_ids.length ) { 
-            this.choices_done = true; 
-            }
-        }
-    
-    // return map id=>payoff
-    async get_payoffs(){
-        let m = new Map();
-        for( let [k,v] of this.ids_players_map ){
-            m.set( v, this.game.getPayoff(v) );
-            }
-        return m;
-        }
-
-    next_round(){
-        this.choices_done = false;
-        this.players_with_choices = [];
-        this.round += 1;
-        }
-    } // class Group
 
 function sock_on_message(group,id){
     return function(message) { // игроки присылают на сервер свои стратегии в сообщениях
