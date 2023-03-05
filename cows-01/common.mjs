@@ -1,12 +1,8 @@
 function get_row_by_value(table, ids, field, value) {
-    let i = 0;
-    while ( i < ids.length ) {
-        if( table[ids[i]][field] == value ){
-            break;
-            }
-        i++
+    for( let id of ids ){
+        if( table[id][field] == value )
+            return table[id]
         }
-    return table[ids[i]];
     }
 
 class TragedyOfCommons {
@@ -23,41 +19,40 @@ class TragedyOfCommons {
             dt[id].game = this
             }
         this.payoff_actual = false;
+        this.A = A
         }
     
     get n(){ return this.players.length; }
 
     setAction(dt, player, a) {
-        for ( let id of this.clients_ids ) {
-            if( dt[id].player == player ){
-                dt[id].action = a;
-                break;
-                }
-            }
-        this.actions.set(player,a); 
+        let r = get_row_by_value(dt, this.clients_ids,'player',player);
+        r.action = a;
         this.payoff_actual = false; 
         }
 
     getPayoff(dt, player){
         if( ! this.payoff_actual )
-            this.calcPayoffs();
-        let i = 0
-        do {
-            if(  )
-        }
-        while( i < this.clients_ids.length )
-        return this.payoffs.get(player);
+            this.calcPayoffs(dt);
+        let r = get_row_by_value(dt,this.clients_ids,'player',player)
+        return r.payoff;
         }
 
-    calcPayoffs(){
+    calcPayoffs(dt){
         let sum = 0;
-        this.actions.forEach( (v,k) => sum += v );
-        for( let p of this.players ){
-            this.payoffs.set(p, this.actions.get(p) * (this.A - sum) );
+        for( let id of this.clients_ids ){
+            sum += dt[id].action;
+            }
+        for( let id of this.clients_ids ){
+            dt[id].payoff = dt[id].action * (this.A - sum);
             }
         }
-    to_string(){
-        return `game is (players=${this.players}, fields=${this.A}, actions=${[...this.actions]}`;
+
+    to_string(dt){
+        let a = []
+        for( let id of this.clients_ids ){
+            a.push( dt[id].action )
+            }
+        return `game is (players_ids=${this.clients_ids}, fields=${this.A}, actions=${a}`;
         }
     }
 
