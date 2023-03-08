@@ -21,13 +21,13 @@ class TragedyOfCommons {
         this.payoff_actual = false;
         this.A = A
         }
-    
+
     get n(){ return this.players.length; }
 
     setAction(dt, player, a) {
         let r = get_row_by_value(dt, this.clients_ids,'player',player);
         r.action = a;
-        this.payoff_actual = false; 
+        this.payoff_actual = false;
         }
 
     getPayoff(dt, player){
@@ -54,12 +54,14 @@ class TragedyOfCommons {
             }
         return `game is (players_ids=${this.clients_ids}, fields=${this.A}, actions=${a}`;
         }
+
     }
 
 class Group {
     static count = 0;
+
     constructor(datatable, clients_ids) {
-        let dt = datatable    
+        let dt = datatable   
         Group.count += 1;
         this.number = Group.count;
         this.clients_ids = clients_ids;
@@ -68,15 +70,15 @@ class Group {
             dt[id].groupcls = this
             dt[id].round = 0
             // Обработчики событий
-            dt[id].player_socket.on('message', sock_on_message(this,id))
+           dt[id].player_socket.on('message', sock_on_message(dt,this,id))
             }
         this.choices_done = false;
         this.players_with_choices = [];
         }
 
-    empty_situation() {
+    /*empty_situation() {
         return new Map(this.game.players.map( el => [el,[]]) );
-        }
+        }*/
 
     fixChoice(dt, player_id, a) {
         if( ! this.clients_ids.includes(player_id) )
@@ -89,8 +91,8 @@ class Group {
         }
 
     get_situation(dt) {
-        this.clients_ids.map(id => dt[id].choice)
-        }     
+        return this.clients_ids.map(id => dt[id].choice)
+        }    
 
     next_round(dt){
         this.choices_done = false;
@@ -99,10 +101,12 @@ class Group {
             dt[id].round += 1;
             }
         }
+
     } // class Group
 
 class VideoGame {
-    constructor({game, player, gamescreen_element, situation}){
+
+    constructor({game, player, gamescreen_element, situation}){ //
         let self = this;
         this.game = game;
         if( Array.isArray(player) ) {
@@ -112,12 +116,10 @@ class VideoGame {
         else {
             this.players = [player];
             this.player = player;
-            } 
+            }
         this.setSituation(situation);
         this.screen = gamescreen_element;
-
         //VideoGame.baseElements(this.screen);
-
         // create cowcards and their place - 'choice sets'
         this.choice_set = this.screen.querySelector('div.choice-set');
         this.choice_sets = {};
@@ -126,14 +128,13 @@ class VideoGame {
         this.cows_conf = new Map(); // conf of cowcards positions, changing by createChoiceSet
         for( let p of this.players ) {
             this.choice_sets[p] = this.choice_set.appendChild(
-                    this.createChoiceSet(p, cows_per_player) 
+                    this.createChoiceSet(p, cows_per_player)
                     )
             }
         // create fields
         if( game.n == 5 ){
             this.screen.style.setProperty('--columns-number', 6);
             this.screen.style.setProperty('--rows-number', 5);
-            
             for( let i = 0, id = 1 ; i < 5 ; i++ ) {
                 for( let j = 0 ; j < 6 ; j++ ) {
                     this.screen.appendChild(this.createField('grass','f'+id))
@@ -144,17 +145,14 @@ class VideoGame {
         else if( game.n == 3 ) {
             this.screen.style.setProperty('--columns-number', 4);
             this.screen.style.setProperty('--rows-number', 4);
-
             this.screen.appendChild(this.createField('ground'))
             this.screen.appendChild(this.createField('grass','f1'))
             this.screen.appendChild(this.createField('grass','f2'))
             this.screen.appendChild(this.createField('ground'))
-
             // fields f3-f10
-            Array.from({length: 8}, (_, i) => 
+            Array.from({length: 8}, (_, i) =>
                 self.screen.appendChild(self.createField('grass','f'+(3+i)))
                 )
-
             this.screen.appendChild(this.createField('ground'))
             this.screen.appendChild(this.createField('grass','f11'))
             this.screen.appendChild(this.createField('grass','f12'))
@@ -163,19 +161,16 @@ class VideoGame {
         else {
             alert('wrong players count! Not 3 or 5')
             }
-        
         this.screen.querySelectorAll('.droppable').forEach((v)=>{
             v.addEventListener('drop',self);
             v.addEventListener('dragover',self);
             })
-        
-        this.cows = this.screen.querySelectorAll('.cow');        
+        this.cows = this.screen.querySelectorAll('.cow');       
         this.fields = this.screen.querySelectorAll('.game-field');
-
         this.payoff_div = this.screen.querySelector('div.pay')
         this.payoff_div.innerHTML = payoff_str(...this.players)
-        this.payoff_elements = 
-            this.players.map( p => 
+        this.payoff_elements =
+            this.players.map( p =>
                 this.payoff_div.querySelector(`span[payoff-${p}]`) );
         this.blind = this.screen.querySelector('.blind');
         this.dragged = null;
@@ -190,26 +185,27 @@ class VideoGame {
         this.players = [player];
         this.player = player;
         this.payoff_div.innerHTML = payoff_str(...this.players);
-        this.payoff_elements = 
-            this.players.map( p => 
+        this.payoff_elements =
+            this.players.map( p =>
                 this.screen.querySelector(`span[payoff-${p}]`) );
-    }
+		}
 
     addChoice(choice,player){
         let c = this.situation.get(player);
         c.push(choice);
         this.game.setAction(player,c.length);
         }
+
     removeChoices(choices,player){
         let c = this.situation.get(player).filter(e=>(!choices.includes(e)));
         this.situation.set(player,c);
         this.game.setAction(player,c.length);
         }
-        
+
     async wipeCards(){
         for( const field of this.fields ){
             let cow = field.querySelector('img.cow');
-            if( !cow ) 
+            if( !cow )
                 continue;
             const gamer = parseInt(cow.getAttribute('player'));
             const move = this.players.includes(gamer);
@@ -223,15 +219,15 @@ class VideoGame {
             //this.removeChoices(Array.from(strategy),gamer);
             }
         //this.drawPayoff();
-        }    
-    
+        }   
+
     async drawCards(){
         await this.wipeCards(); // to avoid multiple cards on some field
         for( const [gamer,strategy] of this.situation ){
             let move = this.players.includes(gamer);
             for( const id of strategy ){
                 let field = this.screen.querySelector('#'+id);
-                let card = move ? 
+                let card = move ?
                             this.giveLastCard(gamer) : this.createCard(gamer,false);
                 this.placeCard( card, field, gamer); //field.appendChild( this.createCard(player,draggable) );
                 }
@@ -256,13 +252,12 @@ class VideoGame {
         return lastcard;
         }
 
-
     getPayoff(gamer){
         console.log( this.game.to_string() );
         console.log( [...this.situation]);
         return this.game.getPayoff(gamer);
         }
-            
+
     setSituation(situation) {
         this.situation = situation || new Map(this.game.players.map(p=>[p,[]])) ;
         for( const [p,v] of this.situation ){
@@ -280,6 +275,7 @@ class VideoGame {
         if ( id ) field.id = id;
         return field;
         }
+
     createCard(player, draggable=true, id=null) {
         var card = createl("img",null,['cow', 'player-'+player]);
         card.setAttribute('src',"img/cow.png");
@@ -288,14 +284,14 @@ class VideoGame {
         if ( id ) card.id = id;
         return card;
         }
-    
+
     placeCard(card,newplace,player) {
         console.log( `placeCard: ${card.id}, ${newplace.id}, ${player}` )
         if( newplace.classList.contains('choice-set-'+player) ){
             card.style.left = this.cows_conf.get(card.id).left;
             card.removeAttribute('graze');
             }
-        else { 
+        else {
             card.style.left = 0 + 'px';
             card.setAttribute('graze',true);
             newplace.removeEventListener('drop',this);
@@ -304,16 +300,16 @@ class VideoGame {
             }
         newplace.appendChild(card);
         }
-    
+
     upCard(card,oldplace,player=this.player) {
         //card.parentNode.removeChild(card);
         if ( oldplace.classList.contains('game-field') ) {
             oldplace.addEventListener('drop',this);
             oldplace.addEventListener('dragover',this);
             //this.removeChoices([oldplace.id],player);
-            }  
+            } 
         }
-    
+
     createChoiceSet(forplayer, cows_per_player=9){
         let chset = createl("div",null,['choice-set-'+forplayer, 'droppable']);
         chset.style.width = (100/this.players.length)+'%';
@@ -330,7 +326,6 @@ class VideoGame {
             chset.appendChild(cow)
             cow.style.left = i*dw + 'px';
             this.cows_conf.set(cow.id,{left:i*dw + 'px'})
-
             cow.addEventListener('dragstart',this);
             }
         return chset
@@ -349,7 +344,7 @@ class VideoGame {
                 break;
             }
         }
-    
+
     drop(event) {
         event.preventDefault();
         //let card_id = ev.dataTransfer.getData("text");
@@ -368,12 +363,11 @@ class VideoGame {
             this.addChoice( newplace.id, player );
             }
         this.drawPayoff();
-    
         //ev.target.appendChild(document.getElementById(data));
         }
-    
+
     allowDrop(ev) { ev.preventDefault(); }
-    
+
     dragstart(ev) {
         ev.dataTransfer.setData("text", ev.target.id);
         this.dragged = ev.target;
@@ -382,23 +376,21 @@ class VideoGame {
     // create blind
     // create info & button
     // create choice-set
-    static createBaseElements(screen){        
-        screen.appendChild( 
+    static createBaseElements(screen){       
+        screen.appendChild(
             createl('div', null, ["blind"],
                 createl('div', "<h2>Ожидание подключения еще</h2>", ["blind-text"])
             ));
-        
-        screen.appendChild( 
+        screen.appendChild(
             createl('div', null, ["info"],
                 createl('div', null, ["text-info", 'pay']),
                 createl('div',
                         '<button id="send" class="btn danger">ОТПРАВИТЬ КОРОВ</button>',
                         ["text-info"])
             ));
-
         screen.appendChild( createl('div', null, ["choice-set"]) );
         }
-    
+
     static createGameElement(id){
         let e = document.createElement("div");
         e.id = 'game-' + id;
@@ -425,18 +417,16 @@ function payoff_str(p1,...pls){
     return s;
     }
 
-
-function sock_on_message(group,id){
+function sock_on_message(dt, group, id){
     return function(message) { // игроки присылают на сервер свои стратегии в сообщениях
         console.log('получено сообщение ' + message);
-        let x = JSON.parse(message); // предполагается, что стратегия передается в JSON 
+        let x = JSON.parse(message); // предполагается, что стратегия передается в JSON
         if( x.action ){
             }
         if( x.choice ){
-            group.fixChoice(id,x.choice);
+            group.fixChoice(dt, id, x.choice);
             }
         };
     }
-
 
 export { TragedyOfCommons, VideoGame, Group }
