@@ -62,7 +62,7 @@ class Group {
         let dt = datatable   
         Group.count += 1;
         this.number = Group.count;
-        this.clients_ids = clients_ids;
+        this.players_ids = clients_ids;
         for( let id of clients_ids ) {
             dt[id].groupnum = this.number
             dt[id].groupcls = this
@@ -79,23 +79,23 @@ class Group {
         }*/
  
     fixChoice(dt, player_id, a) {
-        if( ! this.clients_ids.includes(player_id) )
+        if( ! this.players_ids.includes(player_id) )
             { return false; }
         dt[player_id].choice = a;
         this.players_with_choices.push(player_id);
-        if( this.players_with_choices.length == this.clients_ids.length ) {
+        if( this.players_with_choices.length == this.players_ids.length ) {
             this.choices_done = true;
             }
         }
  
     get_situation(dt) {
-        return this.clients_ids.map(id => dt[id].choice)
+        return this.players_ids.map(id => dt[id].choice)
         }    
  
     next_round(dt){
         this.choices_done = false;
         this.players_with_choices = [];
-        for ( let id of this.clients_ids ){
+        for ( let id of this.players_ids ){
             dt[id].round += 1;
             }
         }

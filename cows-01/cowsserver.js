@@ -5,7 +5,7 @@ const _moscowdate = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', time
 import { parameters } from "./cowsparameters.mjs";
  
 import express from 'express';
-const app = express();
+const app = expresdtas();
  
 app.use(express.static('.'));
  
@@ -22,8 +22,6 @@ import { TragedyOfCommons, Group } from "./common.mjs";
 import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
 import { writeFileSync, writeSync } from 'fs';
- 
-import diophant from 'diophantine'
  
 const gameapi = {
     new_game: (dt, clnts_ids,A) => new TragedyOfCommons(dt, clnts_ids,A),
@@ -44,19 +42,18 @@ let shuffleflag = false;
  
 //const groups = [];
 //const group_of_player = {};
-const grp_work = new GroupWork();
- 
+const group_work = new GroupWork( parameters.players_count, 3, 5 ) ;
+
 const datatable = {} // где создаётся объект для каждого игрока?
  
 // сообщения для админа (-ов?)
 const events_emitter = new EventEmitter();
  
- 
 let clients_ids = []; // переменная, которая хранит ID сессий при комплектовании игроками игры
 let clients_sockets = {}; // переменная, которая хранит ссылку на сокет при комплектовании игроками игры
 // при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется
  
-// старутем WebSocket-сервер на порту, определяемом параметрами в файле
+// стартуем WebSocket-сервер на порту, определяемом параметрами в файле
 const webSocketServer = new WebSocketServer({port: parameters.port});
  
 webSocketServer.on('connection', function(ws,req) { // запускается, когда новый клиент присоединяется к серверу
@@ -67,14 +64,14 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
     clearHistory(id); // обнулить историю. при этом история выигрышей сессии никогда не очищается, и, потому, сохраняется
     
     // запрет сессий с одинаковым ID
-    if ( datatable[id] != undefined || clients_sockets[id] != undefined ) {
+    if ( datatable[id] !== undefined || clients_sockets[id] !== undefined ) {
         ws.send(JSON.stringify({HTML: "<h1>Одному игроку запрещено запускать несколько игровых сессий!</h1>"}));
         console.log("дублирующая сессия, ID = "+id);
         //ws.close();
         return false;
         }
     console.log("новая сессия, ID = " + id + " at " + _moscowdate.format(+new Date()) );
-    addSessionToWaitingList(datatable, id, ws);
+    addSessionToWaitingList(datatable, id, ws, group_work);
                
                 // Обработчики событий
     ws.on('message', function(message) { // игроки присылают на сервер свои стратегии в сообщениях
@@ -83,7 +80,7 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
         if( x.action ){
             }
         if( x.choice ){
-            group_of_player[id].fixChoice(datatable, id, x.choice);
+            datatable[id].groupcls.fixChoice(datatable, id, x.choice);
             }
         });
  
@@ -102,12 +99,11 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
  
             // удаляем группу из списков групп
             let thegroup = datatable[id].groupcls; // group_of_player[id];
-                                               delete datatable[id].player_socket
+            delete datatable[id].player_socket
+            delete_group( thegroup, id );
  
-                                               delete_group( thegroup, id );
- 
-                                               ## // сохранить историю?
-            ## delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
+//           ## // сохранить историю?
+//            ## delete players_sockets[id]; // вычистить выбывшего игрока из массива играющих сессий
  
             // сообщение админу
             events_emitter.emit('deletegroup', {
@@ -121,18 +117,52 @@ webSocketServer.on('connection', function(ws,req) { // запускается, �
 // in it?:
 //      diophant
 //      clients?
+import diophant from 'diophantine'
+
 class GroupWork {
-    constructor(){
+    constructor( players_count, group1_size, group2_size ){
         this.groups = [];
         this.group_of_player = {};
+        this.g1 = group1_size;
+        this.g2 = group2_size;
+        this.groups_sizes = [];
+        this.players_count = players_count
+        this.set_groups_sizes( players_count ) ;
         }
- 
+
+    // grouping n players by groupsize 3 or 5
+    //   n must be >=3 and not 4 or 7
+    grouping( n ) {
+        const { solutionType, g, z, m, p } = diophant.dioSolve(this.g1, this.g2, n)
+
+        // despite that i check that solution will be linear up to n=200
+        if( solutionType !== diophant.SolutionType.Linear || m[1] === 0){
+            throw Error('in cowsserver.js, grouping() n='+n);
+            }
+
+        let k = - p[1] / Math.abs(m[1]);
+        let step = (m[1]>0) ? 1 : -1;
+        k = (step>0) ? Math.ceil(k) : Math.floor(k)
+        let [groupsby3,groupsby5] = [ m[0] * k + p[0], m[1] * k + p[1] ]
+
+        //console.log(`Solutions: x = ${m[0]}n + ${p[0]}, y = ${m[1]}n + ${p[1]}`)
+        return Array.from( {length:groupsby5+groupsby3}, (_,i)=>(i<groupsby5)?5:3 );
+        }
+
+    pop_group_size (n) {
+        return this.groups_sizes.pop() || n ;
+        }
+    get_group_size (n) {
+        return this.groups_sizes[this.groups_sizes.length-1] || n ;
+        }
+    set_groups_sizes (n) { this.groups_sizes = this.grouping( n ) }
+
     create_group(dt, gclients_ids, gclients_sockets) {
-                               let g = new Group(dt, gclients_ids);
+        let g = new Group(dt, gclients_ids);
         g.choices_done = true; // для отправки начальной ситуации (0,0,0)
         this.groups.push(g);
         for ( let id of gclients_ids ) {
-                                               dt[id] = dt[id] || {};
+            dt[id] = dt[id] || {};
             dt[id].player_socket = gclients_sockets[id]; // сохранить сокет
             this.group_of_player[id] = g;
             }
@@ -141,82 +171,90 @@ class GroupWork {
  
     //delete
     delete_group( dt, group, except_id=null ){
-        let groupindex = groups.indexOf(group);
-        if( groupindex == -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
+        let groupindex = this.groups.indexOf(group);
+        if( groupindex === -1 ) { console.log( "websocket on close - WARNING: I haven't found group" ); }
         else { this.groups.splice(groupindex,1); }
      
         // сессии всех остальных оппонентов в таблицу ожидания
         let ops = group.players_ids;
         let ids = [], wsocks = {};
         for( let id of ops ) {
-                                               delete this.group_of_player[id];
-            if( id != except_id ) {
-                                                               dt[id].player_socket.send(JSON.stringify({ deletegame: true }));
+            delete this.group_of_player[id];
+            if( id !== except_id ) {
+                dt[id].player_socket.send(JSON.stringify({ deletegame: true }));
                 ids.push(id);
                 wsocks[id] = dt[id].player_socket;
                 }
             }
    
         return [ ids, wsocks ];
-       }
+        }
+
     } // class GroupWork
  
 function delete_group( group, id ) {
-                               const [ids, wsocks] = grp_work.delete_group( datatable, group, id );
-                               for( let oid of ids ) {
-                                               addSessionToWaitingList(datatable, oid, wsocks[oid]); // поместить оппонентов в ожидающие сессии
-                                               }
-                }
- 
+    const [ids, wsocks] = group_work.delete_group( datatable, group, id );
+    // поместить оппонентов в ожидающие сессии
+    for( let oid of ids ) {
+        addSessionToWaitingList(datatable, oid, wsocks[oid], group_work);
+        }
+    }
 function shuffle_groups( groups ){
     let all_players_ids = []
     for ( let g in groups ){
         all_players_ids.push(...g.players_ids);
-    }
- 
+        }
+
     shuffle(all_players_ids);
- 
+
     // grouping
- 
+
     // поставить ожидающих на паузу
-    clients_wait = [...clients_ids];
-    clients_sockets_wait = [...clients_sockets];
+    let clients_wait = [...clients_ids];
+    let clients_sockets_wait = [...clients_sockets];
     [clients_ids, clients_sockets] = [ [], [] ]
- 
+
     for( let pid in all_players_ids ){
-        addSessionToWaitingList(pid,datatable[pid].player_socket)
-                               }
- 
+        addSessionToWaitingList(datatable, pid, datatable[pid].player_socket, group_work);
+        }
+
     // вернуть ожидающих на ожидание
     clients_ids = clients_wait;
     clients_sockets = clients_sockets_wait;
 }
+
+
  
  
- 
-function addSessionToWaitingList(dt, player_id, wws) { // инлайновая функция
+function addSessionToWaitingList(dt, player_id, wws, group_work) { // инлайновая функция
     clients_ids.push(player_id); // добавить новую сессию в список игроков
-                clients_sockets[player_id] = wws; // сохранить ссылку на сокет
+    clients_sockets[player_id] = wws; // сохранить ссылку на сокет
  
-    if ( clients_ids.length == get_group_size(parameters.n) ) { // если набрался полный комплект участников
-        pop_group_size(parameters.n);
-        let g = create_group(dt, clients_ids, clients_sockets); // create_group set {} to dt[ids]
-                               let size = clients_ids.length;
-                               let subgame = gameapi.new_game(dt, clients_ids, parameters.fieldsize[size]); // создаём локальную игру в группе
-        ## history[g.number] = {0: g.situation};
+    if ( clients_ids.length === group_work.get_group_size(parameters.n) ) { // если набрался полный комплект участников
+        group_work.pop_group_size(parameters.n);
+        for( let id of clients_ids ){
+            dt[id] = dt[id] || {};
+            }
+
+        let g = group_work.create_group(dt, clients_ids, clients_sockets);
+        let size = clients_ids.length;
+        // создаём локальную игру в группе
+        let subgame = gameapi.new_game(dt, clients_ids, parameters.fieldsize[size]);
+
+//        ## history[g.number] = {0: g.situation};
  
         for ( let id of clients_ids ) {
-                                               clients_sockets[id].send(
-                                                               JSON.stringify({
-                                                                               newgame     : true,
-                                                                               playertype  : dt[id].player,
-                                                                               n           : size,
-                                                                               fieldsize   : subgame.A
-                                                                               })
-                                                               );
-                                               }
-                               clients_ids = []; // готов формировать новый комплекс игроков
-                               clients_sockets = {};
+            clients_sockets[id].send(
+                    JSON.stringify({
+                        newgame     : true,
+                        playertype  : dt[id].player,
+                        n           : size,
+                        fieldsize   : subgame.A
+                        })
+                    );
+            }
+        clients_ids = []; // готов формировать новый комплекс игроков
+        clients_sockets = {};
  
         events_emitter.emit('newgroup', {
             newgroup: {
@@ -225,7 +263,7 @@ function addSessionToWaitingList(dt, player_id, wws) { // инлайновая �
                 playerscount: size
                 }
             });
-        }
+        }// if
     }
  
  
@@ -237,9 +275,9 @@ setInterval(sendFields, parameters.updateinterval);
  
 function connectInfo() {
     for(let soc in clients_sockets) { // по всем клиентам, ожидающим подключения
-        if (clients_sockets[soc]!=undefined) {
+        if (clients_sockets[soc]!==undefined) {
             let message = { showcontrols: false };
-            message.HTML ='<div class="blind-text"><h2>Ожидание подключения еще '+ (parameters.n-clients.length)+ ' игроков для начала игры...</h2></div>';
+            message.HTML ='<div class="blind-text"><h2>Ожидание подключения еще '+ (parameters.n-clients_ids.length)+ ' игроков для начала игры...</h2></div>';
             clients_sockets[soc].send(JSON.stringify(message));
             }
         }
@@ -248,7 +286,7 @@ function connectInfo() {
 // это основная функция, которую необходимо модифицировать от игры к игре
 // она вычисляет выигрыши всех игроков, рисует поле в html и отправляет его для отображения клиенту
 function sendFields() {       
-    groups.filter(g=>g.choices_done).forEach( g=>{
+    group_work.groups.filter(g=>g.choices_done).forEach( g=>{
         // solve game
  
         // solve possible collisions
@@ -282,7 +320,7 @@ function sendFields() {
         });
  
     if(shuffleflag) { // если режим перемешивания, то для следующего периода перемешать игроков
-        shufflePlayers();
+        shuffle_groups( group_work.groups );
         }
     }
  
@@ -339,7 +377,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
     ws.on('message', function(message) { // админ присылает на сервер пароль и команды обнуления статистики
         console.log('получено админское сообщение');
         let command = JSON.parse(message); // предполагается, что команда передается в JSON
-        if( command.password =='trapeznikov') { // если передан пароль, причем правильный
+        if( command.password ==='trapeznikov') { // если передан пароль, причем правильный
             verified = true;
             if(command.restart) { // если запрошен рестарт статистики
                 console.log('запрошен рестарт');
@@ -352,7 +390,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
                 }
             // если отправлено новое число игроков
             if(command.players_count ) {
-                set_groups_sizes( command.players_count )
+                group_work.set_groups_sizes( command.players_count )
                }
             }
         else {
@@ -388,7 +426,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
         let s;
  
         let plcnt = 0;
-        for( let g of groups ) { // по всем группам
+        for( let g of group_work.groups ) { // по всем группам
             // номер группы, профиль стратегий, размер поля, раунд
             message.push( [g.number, history[g.number][g.round].situation, g.game.A, g.round] )
             plcnt += g.players_ids.length;
@@ -397,7 +435,7 @@ adminServer.on('connection', function(ws) { // запускается, когд�
         s = {
             curstate: message,
             playerscount: plcnt,
-            groupscount: groups.length,
+            groupscount: group_work.groups.length,
             waiterscount: clients_ids.length
             };
         events_emitter.emit('curstate', s);
@@ -426,34 +464,6 @@ function shuffle(array) {
 function Round(num,dig) {
     return Math.round( num * Math.pow(10,dig) + Number.EPSILON ) / Math.pow(10,dig);
     }
- 
-// grouping n players by groupsize 3 or 5
-//   n must be >=3 and not 4 or 7
-const g1 = 3;
-const g2 = 5;
-let groups_sizes = [];
-function grouping( n ) {
-    const { solutionType, g, z, m, p } = diophant.dioSolve(g1, g2, n)
- 
-    // despite that i check that solution will be linear up to n=200
-    if( solutionType != diophant.SolutionType.Linear || m[1] == 0){
-        throw Error('in cowsserver.js, grouping() n='+n);
-        }
-   
-    let k = - p[1] / Math.abs(m[1]);
-    let step = (m[1]>0) ? 1 : -1;
-    k = (step>0) ? Math.ceil(k) : Math.floor(k)
-    let [groupsby3,groupsby5] = [ m[0] * k + p[0], m[1] * k + p[1] ]
-   
-    //console.log(`Solutions: x = ${m[0]}n + ${p[0]}, y = ${m[1]}n + ${p[1]}`)
-   
-    return Array.from( {length:groupsby5+groupsby3}, (_,i)=>(i<groupsby5)?5:3 );
-}
-const pop_group_size = (n) => groups_sizes.pop() || n ;
-const get_group_size = (n) => groups_sizes[groups_sizes.length-1] || n ;
-function set_groups_sizes (n) { groups_sizes = grouping( n ) }
- 
-set_groups_sizes( parameters.players_count )
  
  
 console.log('WebSocket Сервер запущен на портах ' +parameters.statsport+', '+parameters.port+', '+parameters.adminport);
