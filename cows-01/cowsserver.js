@@ -5,7 +5,7 @@ const _moscowdate = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', time
 import { parameters } from "./cowsparameters.mjs";
  
 import express from 'express';
-const app = expresdtas();
+const app = express();
  
 app.use(express.static('.'));
  
